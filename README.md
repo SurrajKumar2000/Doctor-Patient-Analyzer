@@ -1,20 +1,128 @@
 # 🩺 Doctor-Patient Communication Analyzer
 
-> **Multi-modal AI framework for empirical scoring of clinical communication quality**
-> Built as a research prototype for PhD-level assessment in Human-Computer Interaction
+> Multi-modal AI framework for empirical scoring of clinical communication quality.
+> Built as a PhD-level HCI research prototype — Saint Louis University, Prof Min Choi.
 
 ---
 
-## Overview
+## What It Does
 
-This tool analyzes doctor-patient consultation videos using computer vision, speech processing, and large language models to produce an **empirically grounded communication score** — not an AI opinion.
+Analyzes a YouTube doctor-patient consultation video and produces an **empirically grounded communication score** — not an AI opinion. The LLM explains the score. It cannot change it.
 
-The scoring pipeline is anchored to two peer-reviewed frameworks:
+```
+YouTube URL → video → visual stream + audio stream → TOPSIS score → LLM coaching
+```
 
-- **Calgary-Cambridge Communication Guide** *(Kurtz & Silverman, 1996)* — defines what to measure and clinical dimension weights
-- **TOPSIS Multi-Criteria Decision Analysis** *(Hwang & Yoon, 1981)* — defines how to score empirically using distance from ideal/worst-case vectors
+---
 
-The LLM (Llama 3.3 70B) **explains** the score — it cannot change it.
+## Scoring Philosophy
+
+Two peer-reviewed frameworks anchor every score:
+
+| Framework | Role |
+|-----------|------|
+| **Calgary-Cambridge** (Kurtz & Silverman, 1996) | Defines *what* to measure and clinical weights |
+| **TOPSIS** (Hwang & Yoon, 1981) | Defines *how* to score using distance from ideal/worst vectors |
+
+```
+normalized  = |value − worst| / |ideal − worst| × 100
+d+          = √Σ (weight × (normalized − 100))²   ← distance from ideal doctor
+d−          = √Σ (weight × normalized)²            ← distance from worst doctor
+final score = d− / (d+ + d−) × 100
+```
+
+The score is computed before the LLM is called. `feedback["overall_score"]` is overwritten to `topsis["topsis_score"]` after every LLM response — immutably.
+
+---
+
+## Version History
+
+### v1 — Foundation
+**Stack:** Groq Whisper + heuristic diarization + basic scoring
+
+- Groq Whisper Large V3 for speech-to-text via API
+- Heuristic diarization: speaker switches guessed from question marks and silence gaps
+- ~60% speaker accuracy
+- Simple metric display
+
+**Limitation:** Diarization was unreliable. "?" detection misses context entirely.
+
+---
+
+### v2 — Visual Layer + Scoring Framework
+**Added:** MediaPipe FaceMesh + TOPSIS + Calgary-Cambridge + dual view modes
+
+- OpenCV + MediaPipe 468-point facial landmark analysis
+- Eye contact estimation, head pose (pitch/yaw), nodding detection, gaze-away timestamps
+- TOPSIS multi-criteria scoring anchored to Calgary-Cambridge dimensions
+- Groq Llama 3.3 70B for clinical coaching feedback
+- **Quick Feedback** mode: score + top 3 actions
+- **Research Mode**: full TOPSIS breakdown, radar chart, per-dimension feedback
+
+**Limitation:** Still using heuristic diarization. MP3 audio sent to both Whisper and diarizer.
+
+---
+
+### v3 — Accurate Diarization
+**Added:** PyAnnote 3.1 + WAV audio + 3-strategy merge + 4-signal speaker detection
+
+**The core fix:**
+```
+Before:  video → audio.mp3 → Whisper ✅ and PyAnnote ❌
+After:   video → audio.mp3 → Whisper ✅  (transcription — compression fine)
+               → audio.wav → PyAnnote ✅  (diarization — uncompressed PCM required)
+```
+
+MP3 lossy compression degrades the voice frequency data PyAnnote uses for speaker fingerprinting. WAV preserves raw acoustic fingerprints → ~94% diarization accuracy vs ~60%.
+
+**3-Strategy Timestamp Merge** (Whisper timestamps ↔ PyAnnote timestamps):
+1. Maximum overlap — primary method
+2. Midpoint lookup — handles boundary gaps
+3. Nearest neighbour — last resort, never fails
+
+**4-Signal Doctor Identification:**
+1. Medical vocabulary score
+2. Question count
+3. First speaker (doctor initiates)
+4. Word count (doctor speaks more)
+
+→ Majority vote across 4 signals. Manual swap button for when auto-detection is wrong.
+Mac M1 MPS acceleration — PyAnnote auto-detects Apple Silicon.
+
+---
+
+### v4 — Brief Coverage + Score Consistency Fix
+**Added:** 5 new metrics + session state fix + transcript removed
+
+#### Bug Fix: Score Mismatch Between Modes
+**Root cause:** Switching Quick ↔ Research mode triggers a Streamlit script rerun. The `analyze_btn` resets to `False` → analysis block skips → different variables in scope → different renders.
+
+**Fix:** All results stored in `st.session_state["analysis_results"]` after analysis. Both modes read from the same cached dict. `OVERALL_SCORE` is set once from session state and displayed in a **shared banner before the mode split** — one piece of HTML, physically impossible to differ.
+
+```python
+OVERALL_SCORE = topsis["topsis_score"]   # set once from session_state
+
+# Shared banner — rendered BEFORE is_quick branch
+# Both modes see the same number
+st.markdown(f'... {OVERALL_SCORE}/100 ...')
+
+if is_quick:
+    ...  # no score card here
+else:
+    ...  # no score card here
+```
+
+#### 5 New Metrics (covering brief gaps)
+
+| Metric | Brief Task | What It Measures |
+|--------|-----------|-----------------|
+| **Empathy Score** | Task 4: tone alignment | Groq Llama rates doctor warmth 0–100 |
+| **Patient Engagement** | Task 4: elaboration rate | Words/turn, voluntary questions, elaboration ratio |
+| **Hesitation Windows** | Task 2: response latency as confusion signal | Patient pauses ≥ 2s flagged with severity + context |
+| **Brow Furrow Index** | Task 1: brow furrow as confusion signal | % frames with furrowed brows from MediaPipe |
+| **Session Arc** | Task 5: improvement across turns | First half vs second half patient speech ratio |
+
+**Transcript removed** — diarization errors made it unreliable and distracting from scores.
 
 ---
 
@@ -23,87 +131,30 @@ The LLM (Llama 3.3 70B) **explains** the score — it cannot change it.
 ```
 YouTube URL
     ↓
-yt-dlp          → video download
+yt-dlp → video download
     ↓
-FFmpeg          → audio.mp3 (Groq Whisper)
-                → audio.wav (PyAnnote — uncompressed, voice fingerprints intact)
+FFmpeg → audio.mp3 (Groq Whisper)
+       → audio.wav (PyAnnote — uncompressed, voice fingerprints intact)
     ↓
-┌─────────────────────────────────┬──────────────────────────────────┐
-│  VISUAL STREAM                  │  AUDIO STREAM                    │
-│  OpenCV + MediaPipe             │  Groq Whisper + PyAnnote 3.1     │
-│  • Eye contact estimation       │  • Speech transcription (MP3)    │
-│  • Head pose (pitch/yaw)        │  • Speaker diarization (WAV)     │
-│  • Facial expression            │  • 3-strategy timestamp merge    │
-│  • Nodding detection            │  • 4-signal doctor identification │
-│  • Gaze-away timestamps         │  • WPM, fillers, turn latency    │
-└─────────────────┬───────────────┴──────────────┬───────────────────┘
-                  └──────────────┬────────────────┘
-                                 ↓
-                  Calgary-Cambridge + TOPSIS scoring
-                  (empirical — LLM cannot override)
-                                 ↓
+┌──────────────────────────┬─────────────────────────────┐
+│  VISUAL STREAM           │  AUDIO STREAM               │
+│  OpenCV + MediaPipe      │  Groq Whisper + PyAnnote    │
+│  · Eye contact %         │  · Transcription (MP3)      │
+│  · Head pose pitch/yaw   │  · Diarization (WAV)        │
+│  · Facial expressions    │  · 3-strategy merge         │
+│  · Nodding events        │  · 4-signal speaker ID      │
+│  · Brow furrow frames    │  · WPM, fillers, latency    │
+└────────────┬─────────────┴──────────────┬──────────────┘
+             └──────────────┬─────────────┘
+                  TOPSIS + Calgary-Cambridge
+                  (score computed before LLM)
+                            ↓
                   Groq Llama 3.3 70B
-                  (clinical coaching, score explanation)
-                                 ↓
+                  (coaching + empathy score)
+                  feedback["overall_score"] → topsis["topsis_score"]
+                            ↓
                   Streamlit — Quick / Research view
-```
-
----
-
-## Scoring Framework
-
-### Calgary-Cambridge Dimensions
-
-| Dimension | Metric | Weight | Rationale |
-|-----------|--------|--------|-----------|
-| Rapport Building | Eye contact % | 25% | Primary non-verbal trust signal |
-| Gathering Information | Turn balance | 25% | Reflects patient-centred listening |
-| Information Giving | Filler word count | 20% | Clarity and confidence of explanation |
-| Non-Verbal Communication | Head nodding events | 15% | Active engagement signal |
-| Initiating Session | Patient response latency | 15% | Comfort and psychological safety |
-
-### TOPSIS Algorithm
-
-For each dimension, a normalized score is computed relative to an ideal doctor (best case) and an anti-ideal doctor (worst case):
-
-```
-normalized  = |value − worst| / |ideal − worst| × 100
-d+          = √Σ (weight × (normalized − 100))²   # distance from ideal
-d−          = √Σ (weight × normalized)²            # distance from worst
-final score = d− / (d+ + d−) × 100
-```
-
-The LLM score is **locked** to the TOPSIS output:
-```python
-feedback["overall_score"] = topsis["topsis_score"]  # immutable
-```
-
----
-
-## Speaker Diarization Pipeline
-
-### Why WAV not MP3 for PyAnnote?
-MP3 uses lossy compression that degrades voice frequency data. PyAnnote performs voice fingerprinting on raw acoustic features — MP3 artifacts cause random speaker assignments. WAV preserves these fingerprints.
-
-```
-audio.mp3 → Groq Whisper   (transcription — compression acceptable)
-audio.wav → PyAnnote 3.1   (diarization  — uncompressed required)
-```
-
-### 3-Strategy Timestamp Merge
-```
-Strategy 1: Maximum overlap  — primary method
-Strategy 2: Midpoint lookup  — handles boundary gaps
-Strategy 3: Nearest segment  — last resort, never fails
-```
-
-### 4-Signal Doctor Identification
-```
-Signal 1: Medical vocabulary score  (symptom, diagnosis, prescription...)
-Signal 2: Question count            (diagnostic questioning pattern)
-Signal 3: First speaker             (doctor initiates consultation)
-Signal 4: Word count                (doctor typically speaks more)
-→ Majority vote across 4 signals
+                  (session_state — score identical in both modes)
 ```
 
 ---
@@ -115,134 +166,118 @@ Signal 4: Word count                (doctor typically speaks more)
 | Video download | yt-dlp | YouTube acquisition |
 | Audio extraction | FFmpeg | MP3 + WAV from video |
 | Visual analysis | MediaPipe FaceMesh | 468-point facial landmarks |
-| Transcription | Groq Whisper Large V3 | Speech-to-text (cloud, fast) |
+| Transcription | Groq Whisper Large V3 | Speech-to-text (cloud) |
 | Diarization | PyAnnote 3.1 | Speaker separation (local, MPS) |
 | Scoring | TOPSIS + Calgary-Cambridge | Empirical multi-criteria scoring |
-| Feedback | Groq Llama 3.3 70B | Clinical coaching language |
+| Feedback + Empathy | Groq Llama 3.3 70B | Clinical coaching language |
 | Frontend | Streamlit | Quick + Research view modes |
 
 ---
 
 ## Setup
 
-### 1. Clone and install
-
-```bash
-git clone <repo>
-cd doctor-patient-analyzer
-
-pip install -r requirements.txt
-```
-
-### 2. API keys (both free)
-
-| Key | Where to get |
-|-----|-------------|
-| Groq API key | [console.groq.com](https://console.groq.com) |
-| HuggingFace token | [huggingface.co](https://huggingface.co) → Settings → Access Tokens |
-
-For HuggingFace, accept model terms at:
-- `huggingface.co/pyannote/speaker-diarization-3.1`
-- `huggingface.co/pyannote/segmentation-3.0`
-
-### 3. Run
-
-```bash
-streamlit run app.py
-```
-
-Enter both keys in the sidebar, paste a YouTube URL, click Analyze.
-
----
-
-## Requirements
+### Requirements
 
 ```
-streamlit
-opencv-python
-mediapipe==0.10.7
-protobuf==3.20.3
-numpy
-requests
-plotly
-yt-dlp
-torch
-torchvision
-torchaudio
-pyannote.audio>=3.1.0
+Python == 3.11        (not 3.12 — MediaPipe incompatible)
+protobuf == 3.20.3    (not 4.x — breaks MediaPipe MessageFactory)
 ```
 
-### Mac M1 note
-PyAnnote automatically uses **MPS** (Metal Performance Shaders) for Apple Silicon acceleration. No configuration needed — device is auto-detected at runtime.
-
-```python
-if torch.backends.mps.is_available():
-    pipeline = pipeline.to(torch.device("mps"))
-```
-
-### Python version
-Requires **Python 3.11**. MediaPipe is not compatible with Python 3.12 due to protobuf API changes.
+### Install
 
 ```bash
 conda create -n docpat python=3.11 -y
 conda activate docpat
-pip install -r requirements.txt
+
+pip install protobuf==3.20.3        # must install FIRST
+pip install mediapipe==0.10.7
+pip install opencv-python streamlit numpy requests plotly yt-dlp
+pip install torch torchvision torchaudio
+pip install pyannote.audio
 ```
+
+### Verify before running
+
+```bash
+python -c "
+import sys, google.protobuf, mediapipe, torch
+print('Python:   ', sys.version[:6])                   # must be 3.11.x
+print('Protobuf: ', google.protobuf.__version__)        # must be 3.20.3
+print('MediaPipe:', mediapipe.__version__)              # 0.10.7
+print('MPS:      ', torch.backends.mps.is_available())  # True on M1
+
+fm = mediapipe.solutions.face_mesh.FaceMesh()
+fm.close()
+print('FaceMesh: OK ✅')
+"
+```
+
+### Run
+
+```bash
+conda activate docpat
+streamlit run app_v4.py
+```
+
+---
+
+## API Keys
+
+Both are free.
+
+| Key | Source | Used For |
+|-----|--------|---------|
+| Groq API `gsk_...` | [console.groq.com](https://console.groq.com) | Whisper transcription + Llama feedback |
+| HuggingFace `hf_...` | [huggingface.co](https://huggingface.co) → Settings → Tokens | PyAnnote diarization (local) |
+
+Accept model terms at both:
+- `huggingface.co/pyannote/speaker-diarization-3.1`
+- `huggingface.co/pyannote/segmentation-3.0`
+
+First PyAnnote run downloads ~1GB to `~/.cache/huggingface`.
+
+---
+
+## Common Errors
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `'MessageFactory' object has no attribute 'GetPrototype'` | protobuf 4.x/5.x | `pip install protobuf==3.20.3 --force-reinstall` |
+| `ValidatedGraphConfig Initialization failed` | Python 3.12 | `conda activate docpat` (Python 3.11) |
+| PyAnnote gives wrong speaker labels | Auto-detection failed | Click **🔄 Swap Doctor ↔ Patient** in sidebar |
+| Quick / Research modes show different scores | Missing session state | Use v4 — score cached once, shared across modes |
+
+---
+
+## Calgary-Cambridge Dimensions
+
+| Dimension | Metric | Weight |
+|-----------|--------|--------|
+| Rapport Building | Eye contact % | 25% |
+| Gathering Information | Turn balance | 25% |
+| Information Giving | Filler word count | 20% |
+| Non-Verbal Communication | Nodding events | 15% |
+| Initiating Session | Patient response latency | 15% |
 
 ---
 
 ## View Modes
 
-### 👨‍⚕️ Quick Feedback
-- Overall score (0–100) with grade
-- Per-dimension score bars
-- Radar chart
-- Top 3 priority actions
-- Strengths
+**👨‍⚕️ Quick Feedback**
+Overall score · Empathy score · Per-dimension bars · Radar chart · Top 3 actions · Strengths
 
-### 🔬 Research Mode
-- Full TOPSIS breakdown (d+, d−, weights, normalized values)
-- All 7 metric cards
-- Calgary-Cambridge radar chart
-- Doctor and patient speech statistics
-- Response latency timeline
-- Visual analysis (expressions, gaze-away, nodding)
-- Detailed AI feedback per dimension
-- Behavioural insights
-- Raw JSON export
-
----
-
-## Version History
-
-| Version | Key Changes |
-|---------|------------|
-| v1 | Heuristic diarization (question marks + silence gaps), basic scoring |
-| v2 | MediaPipe integration, TOPSIS + Calgary-Cambridge scoring, Groq Llama feedback, Quick/Research modes |
-| v3 | PyAnnote 3.1 diarization, WAV audio for voice fingerprinting, 3-strategy merge, 4-signal speaker detection, manual swap button, Mac M1 MPS acceleration |
-
----
-
-## Known Limitations
-
-- Accuracy depends on audio quality — background noise reduces diarization performance
-- Works best with exactly 2 speakers; more speakers may cause label drift
-- Eye contact estimation assumes frontal or near-frontal face orientation
-- First PyAnnote run downloads ~1GB model to `~/.cache/huggingface`
-- MediaPipe requires Python 3.11 — not yet compatible with 3.12
+**🔬 Research Mode**
+TOPSIS d+/d− breakdown · Empathy assessment · Patient engagement panel · Hesitation windows · Brow furrow index · Session arc · Visual analysis · Per-dimension AI feedback · Raw JSON export
 
 ---
 
 ## References
 
-- Kurtz, S. & Silverman, J. (1996). *The Calgary-Cambridge Referenced Observation Guides.* Medical Education, 30(2), 83–89.
-- Hwang, C.L. & Yoon, K. (1981). *Multiple Attribute Decision Making.* Springer-Verlag.
-- Bredin, H. et al. (2021). *End-to-end speaker segmentation for overlap-aware resegmentation.* Interspeech 2021. (PyAnnote)
-- Radford, A. et al. (2022). *Robust Speech Recognition via Large-Scale Weak Supervision.* (Whisper)
+- Kurtz, S. & Silverman, J. (1996). The Calgary-Cambridge Referenced Observation Guides. *Medical Education*, 30(2), 83–89.
+- Hwang, C.L. & Yoon, K. (1981). *Multiple Attribute Decision Making*. Springer-Verlag.
+- Bredin, H. et al. (2021). End-to-end speaker segmentation for overlap-aware resegmentation. *Interspeech 2021*.
+- Radford, A. et al. (2022). Robust Speech Recognition via Large-Scale Weak Supervision. *(Whisper)*
 
 ---
 
-## Author
-
-**Surrajkumar Prabhu Venkatesh**
-UX Researcher · MS Computer Science, Cal State Fullerton
+*v4 · Groq Whisper (MP3) + PyAnnote (WAV · Mac M1 MPS) + Groq Llama 3.3 70B · TOPSIS + Calgary-Cambridge*
