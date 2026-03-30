@@ -128,9 +128,38 @@ else:
 
 ## Architecture
 
-![System Architecture — Multimodal Clinical Communication Scoring Framework](architecture_diagram.png)
+> 📄 **[View Full Architecture Diagram → architecture_diagram.pdf](./architecture_diagram.pdf)**
 
-*Fig. 1 — System Architecture: Calgary-Cambridge Grounded TOPSIS Multimodal Clinical Communication Scoring Pipeline*
+```
+YouTube URL
+    ↓
+yt-dlp → video download
+    ↓
+FFmpeg ──────────────────────────────────────────────┐
+  audio.mp3 → Groq Whisper (transcription)           │
+  audio.wav → PyAnnote 3.1 (diarization, MPS)        │  video → OpenCV → frames[]
+    ↓                   ↓                             ↓
+ text + timestamps   speaker labels            MediaPipe FaceMesh
+         └──────────────┘                      (eye contact, pose,
+     3-strategy timestamp merge                 expression, nodding)
+     4-signal doctor identification                    │
+              ↓                                        │
+       speaker_stats{}  ←──────────────────────────────┘
+              ↓                        ↑
+       Calgary-Cambridge        visual_stats{}
+       (5 weighted dims)
+              ↓
+       TOPSIS Algorithm  →  score = d− / (d+ + d−) × 100
+              ↓
+       OVERALL_SCORE [LOCKED — LLM cannot change]
+              ↓
+       Groq Llama 3.3 70B → coaching + empathy score
+              ↓
+       Streamlit — Quick / Research view modes
+       (session_state cache — score identical in both)
+```
+
+*Fig. 1 — System Architecture: Calgary-Cambridge Grounded TOPSIS Multimodal Clinical Communication Scoring Pipeline. See [`architecture_diagram.pdf`](./architecture_diagram.pdf) for the full annotated diagram.*
 
 ---
 
