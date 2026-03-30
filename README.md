@@ -128,34 +128,9 @@ else:
 
 ## Architecture
 
-```
-YouTube URL
-    ↓
-yt-dlp → video download
-    ↓
-FFmpeg → audio.mp3 (Groq Whisper)
-       → audio.wav (PyAnnote — uncompressed, voice fingerprints intact)
-    ↓
-┌──────────────────────────┬─────────────────────────────┐
-│  VISUAL STREAM           │  AUDIO STREAM               │
-│  OpenCV + MediaPipe      │  Groq Whisper + PyAnnote    │
-│  · Eye contact %         │  · Transcription (MP3)      │
-│  · Head pose pitch/yaw   │  · Diarization (WAV)        │
-│  · Facial expressions    │  · 3-strategy merge         │
-│  · Nodding events        │  · 4-signal speaker ID      │
-│  · Brow furrow frames    │  · WPM, fillers, latency    │
-└────────────┬─────────────┴──────────────┬──────────────┘
-             └──────────────┬─────────────┘
-                  TOPSIS + Calgary-Cambridge
-                  (score computed before LLM)
-                            ↓
-                  Groq Llama 3.3 70B
-                  (coaching + empathy score)
-                  feedback["overall_score"] → topsis["topsis_score"]
-                            ↓
-                  Streamlit — Quick / Research view
-                  (session_state — score identical in both modes)
-```
+![System Architecture — Multimodal Clinical Communication Scoring Framework](architecture_diagram.png)
+
+*Fig. 1 — System Architecture: Calgary-Cambridge Grounded TOPSIS Multimodal Clinical Communication Scoring Pipeline*
 
 ---
 
