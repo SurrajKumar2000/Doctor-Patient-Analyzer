@@ -106,14 +106,10 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
-# MEDIAPIPE SETUP
+# MEDIAPIPE SETUP (fixed for latest mediapipe)
 # ─────────────────────────────────────────────
-from mediapipe.python.solutions import face_mesh as _mp_face_mesh_mod
-
-class _FaceMeshNS:
-    FaceMesh = _mp_face_mesh_mod.FaceMesh
-
-mp_face_mesh = _FaceMeshNS()
+import mediapipe as mp
+mp_face_mesh = mp.solutions.face_mesh
 
 LEFT_EYE_INDICES  = [33, 160, 158, 133, 153, 144]
 RIGHT_EYE_INDICES = [362, 385, 387, 263, 373, 380]
@@ -149,12 +145,10 @@ def calculate_topsis_score(visual_stats, speaker_stats):
         "body_language"    : len(visual_stats.get("nod_timestamps", [])),
     }
 
-    # Replace None with neutral midpoint so missing audio data
-    # doesn't distort the visual-only score
     neutral = {
-        "speech_clarity"  : 10,    # ~average filler count
-        "turn_balance"    : 65,    # slightly doctor-led (typical)
-        "response_latency": 2.0,   # average response time
+        "speech_clarity"  : 10,
+        "turn_balance"    : 65,
+        "response_latency": 2.0,
     }
     for key in raw:
         if raw[key] is None:
@@ -241,14 +235,14 @@ def detect_nod(prev_y, curr_y, threshold=0.015):
     return abs(curr_y-prev_y)>threshold
 
 # ─────────────────────────────────────────────
-# VIDEO ANALYSIS
+# VIDEO ANALYSIS (fixed FaceMesh params)
 # ─────────────────────────────────────────────
 def analyze_video(video_path, sample_rate=4, max_frames=500, progress_cb=None):
     cap=cv2.VideoCapture(video_path); fps=cap.get(cv2.CAP_PROP_FPS) or 25
     total=int(cap.get(cv2.CAP_PROP_FRAME_COUNT)); w=int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)); h=int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     duration=total/fps; frames_data=[]; frame_idx=0; sampled=0; prev_nose_y=None; nod_events=[]
-    with mp_face_mesh.FaceMesh(static_image_mode=False,max_num_faces=4,refine_landmarks=False,
-                                min_detection_confidence=0.3,min_tracking_confidence=0.3) as face_mesh:
+    with mp_face_mesh.FaceMesh(static_image_mode=True, max_num_faces=4, refine_landmarks=True,
+                                min_detection_confidence=0.3, min_tracking_confidence=0.3) as face_mesh:
         while cap.isOpened() and sampled<max_frames:
             ret,frame=cap.read()
             if not ret: break
