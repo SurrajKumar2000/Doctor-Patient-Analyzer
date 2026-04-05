@@ -7,7 +7,7 @@
 
 ## Architecture
 
-![System Architecture](./architecture_diagram.png)
+![System Architecture](./v4_architecture_diagram.svg)
 
 *Fig. 1 — System Architecture: Calgary-Cambridge Grounded TOPSIS Multimodal Clinical Communication Scoring Pipeline*
 
