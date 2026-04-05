@@ -114,14 +114,10 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
-# MEDIAPIPE SETUP
+# MEDIAPIPE SETUP (FIXED — no broken wrapper)
 # ─────────────────────────────────────────────
-from mediapipe.python.solutions import face_mesh as _mp_face_mesh_mod
-
-class _FaceMeshNS:
-    FaceMesh = _mp_face_mesh_mod.FaceMesh
-
-mp_face_mesh = _FaceMeshNS()
+import mediapipe as mp
+mp_face_mesh = mp.solutions.face_mesh
 
 LEFT_EYE_INDICES  = [33, 160, 158, 133, 153, 144]
 RIGHT_EYE_INDICES = [362, 385, 387, 263, 373, 380]
@@ -144,6 +140,12 @@ def get_device():
     if torch.backends.mps.is_available(): return "mps"
     elif torch.cuda.is_available():       return "cuda"
     return "cpu"
+
+# ─────────────────────────────────────────────
+# GROQ API CONSTANTS
+# ─────────────────────────────────────────────
+GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_MODEL    = "llama-3.3-70b-versatile"
 
 # ─────────────────────────────────────────────
 # CALGARY-CAMBRIDGE + TOPSIS
@@ -217,7 +219,6 @@ def radar_chart(topsis_result):
 # V4 METRICS
 # ─────────────────────────────────────────────
 def calculate_patient_engagement(utterances, speaker_map):
-    """Patient-initiated elaboration rate — brief Task 4."""
     if not utterances:
         return {"score":0,"words_per_turn":0,"questions_asked":0,
                 "elaboration_ratio":0,"long_turns":0,"grade":"No data"}
@@ -240,7 +241,6 @@ def calculate_patient_engagement(utterances, speaker_map):
             "elaboration_ratio":ratio,"long_turns":longs,"total_turns":len(pu),"grade":grade}
 
 def calculate_hesitation_windows(speaker_stats, threshold=2.0):
-    """Patient pauses flagged with clinical context — brief Task 2."""
     windows = []
     for lat in speaker_stats.get("response_latencies",[]):
         if lat["latency_s"] >= threshold:
@@ -255,7 +255,6 @@ def calculate_hesitation_windows(speaker_stats, threshold=2.0):
     return sorted(windows, key=lambda x: -x["latency_s"])
 
 def calculate_brow_furrow_index(visual_stats):
-    """Brow furrow = patient confusion — brief Task 1."""
     expr  = visual_stats.get("expr_counts",{})
     total = sum(expr.values())
     furr  = expr.get("Concerned / Furrowed",0)
@@ -269,7 +268,6 @@ def calculate_brow_furrow_index(visual_stats):
     return {"pct":pct,"count":furr,"score":score,"interpretation":interp}
 
 def calculate_session_arc(utterances, speaker_map):
-    """First half vs second half quality — brief Task 5."""
     if len(utterances) < 4:
         return {"available":False}
     mid = len(utterances)//2
@@ -392,123 +390,162 @@ def analyze_video(video_path, sample_rate=4, max_frames=500, progress_cb=None):
             "fps":round(fps,1),"resolution":f"{w}x{h}"}
 
 # ─────────────────────────────────────────────
-# AUDIO EXTRACTION — MP3 for Whisper, WAV for PyAnnote
+# AUDIO EXTRACTION (WAV only — works for both)
 # ─────────────────────────────────────────────
 def extract_audio(video_path, output_dir):
-    """
-    Two files, two tools:
-    MP3 → Groq Whisper  (transcription — compression fine)
-    WAV → PyAnnote      (diarization  — MUST be uncompressed PCM
-                         MP3 destroys voice fingerprints)
-    """
-    mp3_path = os.path.join(output_dir,"audio.mp3")
-    wav_path = os.path.join(output_dir,"audio.wav")
-    r1=subprocess.run(["ffmpeg","-i",video_path,"-vn","-ar","16000","-ac","1","-b:a","64k","-y",mp3_path],
-                      capture_output=True,text=True,timeout=120)
-    if r1.returncode!=0: raise RuntimeError(f"ffmpeg mp3 failed: {r1.stderr[:200]}")
-    r2=subprocess.run(["ffmpeg","-i",video_path,"-vn","-ar","16000","-ac","1","-acodec","pcm_s16le","-y",wav_path],
-                      capture_output=True,text=True,timeout=120)
-    if r2.returncode!=0: raise RuntimeError(f"ffmpeg wav failed: {r2.stderr[:200]}")
-    if not os.path.exists(mp3_path) or os.path.getsize(mp3_path)<1000:
+    wav_path = os.path.join(output_dir, "audio.wav")
+    result = subprocess.run(
+        ["ffmpeg", "-i", video_path, "-vn", "-ar", "16000", "-ac", "1",
+         "-acodec", "pcm_s16le", "-y", wav_path],
+        capture_output=True, text=True, timeout=120
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"ffmpeg failed: {result.stderr[:200]}")
+    if not os.path.exists(wav_path) or os.path.getsize(wav_path) < 1000:
         raise RuntimeError("Audio extraction produced empty file")
-    return mp3_path, wav_path
+    return wav_path
 
 # ─────────────────────────────────────────────
 # DIARIZATION — Whisper + PyAnnote
 # ─────────────────────────────────────────────
 def _merge_whisper_pyannote(whisper_segments, pyannote_segments):
-    """3-strategy merge: overlap → midpoint → nearest."""
     if not pyannote_segments:
         return [{"speaker":"SPEAKER_00","start":int(s.get("start",0)*1000),
                  "end":int(s.get("end",0)*1000),"text":s.get("text","").strip(),
                  "confidence":s.get("avg_logprob",0)} for s in whisper_segments]
-    utterances=[]
+    utterances = []
     for seg in whisper_segments:
-        ss=seg.get("start",0); se=seg.get("end",0); sm=(ss+se)/2
-        best="SPEAKER_00"; best_ov=-1
+        ss = seg.get("start",0); se = seg.get("end",0); sm = (ss+se)/2
+        best = "SPEAKER_00"; best_ov = -1
         for ps in pyannote_segments:
-            ov=min(se,ps["end"])-max(ss,ps["start"])
-            if ov>best_ov: best_ov=ov; best=ps["speaker"]
-        if best_ov<=0:
+            ov = min(se, ps["end"]) - max(ss, ps["start"])
+            if ov > best_ov: best_ov = ov; best = ps["speaker"]
+        if best_ov <= 0:
             for ps in pyannote_segments:
-                if ps["start"]<=sm<=ps["end"]: best=ps["speaker"]; break
+                if ps["start"] <= sm <= ps["end"]: best = ps["speaker"]; break
             else:
-                best=min(pyannote_segments,key=lambda ps:abs(((ps["start"]+ps["end"])/2)-sm))["speaker"]
+                best = min(pyannote_segments, key=lambda ps: abs(((ps["start"]+ps["end"])/2)-sm))["speaker"]
         utterances.append({"speaker":best,"start":int(ss*1000),"end":int(se*1000),
                            "text":seg.get("text","").strip(),"confidence":seg.get("avg_logprob",0)})
     return utterances
 
 def _heuristic_diarization(segments, full_text):
-    utterances=[]; cs="A"
-    for i,seg in enumerate(segments):
-        txt=seg.get("text","").strip(); sms=int(seg.get("start",0)*1000); ems=int(seg.get("end",0)*1000)
-        if i>0:
-            gap=seg.get("start",0)-segments[i-1].get("end",0)
-            if segments[i-1].get("text","").strip().endswith("?") or gap>0.8:
-                cs="B" if cs=="A" else "A"
-        utterances.append({"speaker":cs,"start":sms,"end":ems,"text":txt,"confidence":seg.get("avg_logprob",0)})
+    utterances = []; cs = "A"
+    for i, seg in enumerate(segments):
+        txt = seg.get("text","").strip()
+        sms = int(seg.get("start",0)*1000); ems = int(seg.get("end",0)*1000)
+        if i > 0:
+            gap = seg.get("start",0) - segments[i-1].get("end",0)
+            if segments[i-1].get("text","").strip().endswith("?") or gap > 0.8:
+                cs = "B" if cs == "A" else "A"
+        utterances.append({"speaker":cs,"start":sms,"end":ems,"text":txt,
+                           "confidence":seg.get("avg_logprob",0)})
     return {"utterances":utterances,"text":full_text,"diarization_method":"heuristic"}
 
-def transcribe_with_diarization(mp3_path, wav_path):
-    groq_key=st.session_state.get("groq_key_store","")
-    hf_token=st.session_state.get("hf_token_store","")
-    device=get_device()
-    headers={"Authorization":f"Bearer {groq_key}"}
-    with open(mp3_path,"rb") as f:
-        resp=requests.post("https://api.groq.com/openai/v1/audio/transcriptions",
-                           headers=headers,
-                           files={"file":(os.path.basename(mp3_path),f,"audio/mpeg")},
-                           data={"model":"whisper-large-v3","response_format":"verbose_json",
-                                 "language":"en","temperature":"0"},timeout=120)
-    if resp.status_code==401: raise ValueError("Invalid Groq API key")
-    if resp.status_code!=200: raise ValueError(f"Whisper failed {resp.status_code}: {resp.text[:200]}")
-    wr=resp.json(); ws=wr.get("segments",[]); ft=wr.get("text","")
+def transcribe_with_diarization(wav_path):
+    groq_key = st.session_state.get("groq_key_store","")
+    hf_token = st.session_state.get("hf_token_store","")
+    device = get_device()
+
+    headers = {"Authorization": f"Bearer {groq_key}"}
+    with open(wav_path, "rb") as f:
+        resp = requests.post(
+            "https://api.groq.com/openai/v1/audio/transcriptions",
+            headers=headers,
+            files={"file": (os.path.basename(wav_path), f, "audio/wav")},
+            data={"model":"whisper-large-v3","response_format":"verbose_json",
+                  "language":"en","temperature":"0"},
+            timeout=120
+        )
+    if resp.status_code == 401: raise ValueError("Invalid Groq API key")
+    if resp.status_code != 200: raise ValueError(f"Whisper failed {resp.status_code}: {resp.text[:200]}")
+
+    wr = resp.json(); ws = wr.get("segments",[]); ft = wr.get("text","")
+
     if not hf_token:
         st.info("💡 Add HuggingFace token for PyAnnote diarization (~94% accuracy)")
-        return _heuristic_diarization(ws,ft)
+        return _heuristic_diarization(ws, ft)
+
     try:
         from pyannote.audio import Pipeline
-        pipe=Pipeline.from_pretrained("pyannote/speaker-diarization-3.1",use_auth_token=hf_token)
-        if device=="mps":   pipe=pipe.to(torch.device("mps"))
-        elif device=="cuda":pipe=pipe.to(torch.device("cuda"))
-        diar=pipe(wav_path,min_speakers=2,max_speakers=2)
-        ps=[{"start":t.start,"end":t.end,"speaker":sp} for t,_,sp in diar.itertracks(yield_label=True)]
-        st.caption(f"🔍 PyAnnote: {len(ps)} segments · {device.upper()}")
-        return {"utterances":_merge_whisper_pyannote(ws,ps),"text":ft,
-                "diarization_method":"pyannote","device_used":device.upper(),"segment_count":len(ps)}
+        pipe = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1", use_auth_token=hf_token)
+        if device == "mps":   pipe = pipe.to(torch.device("mps"))
+        elif device == "cuda": pipe = pipe.to(torch.device("cuda"))
+
+        # num_speakers=2 → exactly doctor + patient
+        diar = pipe(wav_path, num_speakers=2)
+
+        ps = [{"start":t.start,"end":t.end,"speaker":sp}
+              for t,_,sp in diar.itertracks(yield_label=True)]
+        return {"utterances":_merge_whisper_pyannote(ws, ps),"text":ft,
+                "diarization_method":"pyannote","device_used":device.upper(),
+                "segment_count":len(ps)}
     except ImportError:
         st.warning("⚠️ PyAnnote not installed — pip install pyannote.audio torch")
-        return _heuristic_diarization(ws,ft)
+        return _heuristic_diarization(ws, ft)
     except Exception as e:
         st.warning(f"⚠️ PyAnnote failed: {str(e)[:150]} — heuristic fallback")
-        return _heuristic_diarization(ws,ft)
+        return _heuristic_diarization(ws, ft)
 
 # ─────────────────────────────────────────────
-# SPEAKER IDENTIFICATION — 4 signals
+# LLM-BASED SPEAKER IDENTIFICATION
 # ─────────────────────────────────────────────
 def identify_speakers(utterances):
-    if not utterances: return {"doctor":"SPEAKER_00","patient":"SPEAKER_01"}
-    all_sp=sorted({u["speaker"] for u in utterances})
-    if len(all_sp)<2: return {"doctor":all_sp[0],"patient":"SPEAKER_01"}
-    a,b=all_sp[0],all_sp[1]
-    MED=["pain","symptom","medication","diagnosis","treatment","prescription",
-         "blood","pressure","heart","breath","chest","fever","nausea","allergy",
-         "history","condition","chronic","acute","dose","tablet","mg","ml",
-         "examine","refer","specialist","follow up","test","result","scan",
-         "recommend","advice","exercise","diet","anxiety","depression","sleep",
-         "how long","when did","where does","describe","tell me","any other",
-         "family history","surgical","operation","hospital","gp","doctor"]
-    med={a:0,b:0}; qc={a:0,b:0}; wc={a:0,b:0}
-    for u in utterances:
-        sp=u["speaker"]; txt=u["text"].lower()
-        if sp not in med: continue
-        med[sp]+=sum(1 for t in MED if t in txt); qc[sp]+=txt.count("?")
-        wc[sp]+=u.get("words",len(u["text"].split()))
-    votes={a:0,b:0}
-    for w in [max(med,key=med.get),max(qc,key=qc.get),utterances[0]["speaker"],max(wc,key=wc.get)]:
-        if w in votes: votes[w]+=1
-    dl=max(votes,key=votes.get); pl=b if dl==a else a
-    return {"doctor":dl,"patient":pl}
+    if not utterances:
+        return {"doctor":"SPEAKER_00","patient":"SPEAKER_01"}
+
+    all_speakers = sorted({u["speaker"] for u in utterances})
+    if len(all_speakers) < 2:
+        return {"doctor":all_speakers[0],"patient":"SPEAKER_01"}
+
+    first_speaker = utterances[0]["speaker"]
+    other_speaker = next(s for s in all_speakers if s != first_speaker)
+    fallback = {"doctor":first_speaker,"patient":other_speaker}
+
+    groq_key = st.session_state.get("groq_key_store","")
+    if not groq_key:
+        return fallback
+
+    sample = utterances[:20]
+    transcript_lines = "\n".join(
+        f"{u['speaker']} ({u['start_s']}s): {u['text'][:100]}" for u in sample
+    )
+
+    prompt = f"""Below is a transcript of a doctor-patient clinical conversation.
+Two speakers are labeled {all_speakers[0]} and {all_speakers[1]}.
+One is the doctor, the other is the patient.
+
+Based on the CONTENT of what they say, identify which speaker is the doctor.
+Look for clues like:
+- Who greets with "Mr./Mrs." (doctor) vs "Dr." (patient addressing doctor)
+- Who asks "What brings you in?" or "How can I help?" (doctor)
+- Who describes symptoms like "my back hurts" (patient)
+- Who references medical history or records (doctor)
+- Who gives medical advice or asks clinical questions (doctor)
+
+Transcript:
+{transcript_lines}
+
+Reply with ONLY one line, no explanation:
+doctor={all_speakers[0]}
+OR
+doctor={all_speakers[1]}"""
+
+    try:
+        headers = {"Authorization":f"Bearer {groq_key.strip()}","Content-Type":"application/json"}
+        payload = {"model":GROQ_MODEL,"messages":[{"role":"user","content":prompt}],
+                   "max_tokens":30,"temperature":0}
+        resp = requests.post(GROQ_CHAT_URL, headers=headers, json=payload, timeout=30)
+        if resp.status_code != 200:
+            return fallback
+        answer = resp.json()["choices"][0]["message"]["content"].strip().lower()
+        for sp in all_speakers:
+            if f"doctor={sp.lower()}" in answer or f"doctor= {sp.lower()}" in answer:
+                patient_label = next(s for s in all_speakers if s != sp)
+                return {"doctor":sp,"patient":patient_label}
+        return fallback
+    except Exception:
+        return fallback
 
 def process_diarized_transcript(raw):
     return [{"speaker":u.get("speaker","?"),"start_s":round(u.get("start",0)/1000,1),
@@ -571,9 +608,6 @@ def download_youtube(url, output_dir):
 # ─────────────────────────────────────────────
 # GROQ LLM — includes empathy scoring
 # ─────────────────────────────────────────────
-GROQ_CHAT_URL="https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODEL   ="llama-3.3-70b-versatile"
-
 def build_prompt(visual_stats, speaker_stats, utterances, speaker_map,
                  aligned, topsis, engagement, hesitation_windows):
     gaze_str=", ".join(f"{s}s-{e}s" for s,e in visual_stats["gaze_away_windows"][:5]) or "None"
@@ -585,7 +619,6 @@ def build_prompt(visual_stats, speaker_stats, utterances, speaker_map,
                       for w in hesitation_windows[:4]) or "None detected"
     aligned_str="\n".join(f"  [{ev['time']}] {ev['role']}: \"{ev['speech'][:60]}\"\n    Eye: {ev['eye_contact']} | Expr: {ev['expression']}"
                           for ev in aligned[:8])
-    # ── TOPSIS score is LOCKED — LLM must use this exact value ──────────
     locked_score = topsis["topsis_score"]
     return f"""You are an expert clinical communication coach analysing a doctor-patient interaction.
 The overall score is {locked_score}/100 — you MUST use this exact value, do not change it.
@@ -636,6 +669,7 @@ Return ONLY valid JSON, no markdown fences:
   "strengths": ["<strength>","<strength>"],
   "coaching_tips": ["<tip>","<tip>","<tip>"]
 }}""".strip()
+
 
 def get_llm_feedback(visual_stats, speaker_stats, utterances, speaker_map,
                      aligned, topsis, engagement, hesitation_windows, groq_key):
@@ -699,7 +733,6 @@ def render_feedback_block(title, icon, data):
         for r in data.get("recommendations",[]): st.markdown(f"- {r}")
 
 def pinned_block(feedback, fb_key, topsis_key, topsis):
-    # ALWAYS pins score to TOPSIS — never uses LLM score value
     block=dict(feedback.get(fb_key,{}))
     block["score"]=round(topsis["breakdown"][topsis_key]["normalized"])
     return block
@@ -709,42 +742,24 @@ def pinned_block(feedback, fb_key, topsis_key, topsis):
 # ─────────────────────────────────────────────
 with st.sidebar:
     st.markdown("### ⚙️ API Keys")
-    groq_key=st.text_input("Groq API Key",type="password",
-        help="Free at console.groq.com",placeholder="gsk_...")
+    groq_key=st.text_input("Groq API Key",type="password",placeholder="gsk_...")
     if groq_key: st.session_state["groq_key_store"]=groq_key
     if groq_key and not groq_key.strip().startswith("gsk_"):
         st.warning("⚠️ Groq keys start with **gsk_**")
 
     st.divider()
     st.markdown("### 🤗 HuggingFace Token")
-    hf_token=st.text_input("HuggingFace Token",type="password",
-        help="Free at huggingface.co — for PyAnnote speaker diarization",
-        placeholder="hf_...")
+    hf_token=st.text_input("HuggingFace Token",type="password",placeholder="hf_...")
     if hf_token: st.session_state["hf_token_store"]=hf_token
     device=get_device()
     if hf_token:
         st.success(f"🎙️ PyAnnote active · ~94% accuracy")
-        st.caption(f"Device: {device.upper()} · WAV · Mac M1 MPS")
+        st.caption(f"Device: {device.upper()} · num_speakers=2")
     else:
         st.warning("⚠️ Heuristic diarization · ~60%")
-        st.caption("Add HF token for accurate speaker separation")
-
-    st.divider()
-    st.markdown("### 🔄 Speaker Assignment")
-    st.caption("If Doctor/Patient labels are swapped:")
-    if st.button("🔄 Swap Doctor ↔ Patient",use_container_width=True):
-        st.session_state["swap_speakers"]=not st.session_state.get("swap_speakers",False)
-        # Invalidate cached results so re-analysis runs
-        st.session_state.pop("analysis_results",None)
-    if st.session_state.get("swap_speakers",False):
-        st.success("✅ Swapped — click Analyze to apply")
-    else:
-        st.info("👤 Auto-detected")
 
     st.divider()
     st.markdown("### 🖥️ View Mode")
-    # ── KEY FIX: view mode switch does NOT trigger re-analysis ──
-    # Results are cached in session_state and read by both modes
     view_mode=st.radio("Select mode",["👨‍⚕️ Quick Feedback","🔬 Research Mode"],index=0)
     is_quick=view_mode=="👨‍⚕️ Quick Feedback"
 
@@ -753,14 +768,13 @@ with st.sidebar:
     <div style="background:#f0fff4;border:1px solid #9ae6b4;border-radius:8px;
                 padding:.8rem 1rem;font-size:.82rem;color:#276749">
         ⚙️ <b>v4 Pipeline:</b><br>
-        • Groq Whisper → transcription (MP3)<br>
-        • PyAnnote → diarization (WAV)<br>
+        • Groq Whisper → transcription (WAV)<br>
+        • PyAnnote 3.1 → diarization (num_speakers=2)<br>
+        • LLM → speaker identification<br>
         • TOPSIS + Calgary-Cambridge scoring<br>
         • Empathy score via Groq Llama<br>
-        • Patient engagement analysis<br>
-        • Hesitation window detection<br>
-        • Brow furrow confusion index<br>
-        • Session quality arc
+        • Patient engagement · Hesitation · Brow furrow · Session arc<br>
+        • Results persisted across mode switches
     </div>""",unsafe_allow_html=True)
     st.divider()
     st.caption("v4 — Multi-Modal Clinical Communication Analyzer")
@@ -771,13 +785,12 @@ with st.sidebar:
 st.markdown("""
 <div class="main-header">
     <h1>🩺 Doctor-Patient Communication Analyzer</h1>
-    <p>v4 · MediaPipe + Groq Whisper + PyAnnote + Groq Llama 3.3 70B · TOPSIS Calgary-Cambridge</p>
+    <p>v4 · MediaPipe + Groq Whisper + PyAnnote (num_speakers=2) + LLM Speaker ID + Groq Llama 3.3 70B</p>
 </div>""",unsafe_allow_html=True)
 
 col_url,col_btn=st.columns([5,1])
 with col_url:
-    youtube_url=st.text_input("YouTube URL",placeholder="https://www.youtube.com/watch?v=...",
-                               label_visibility="collapsed")
+    youtube_url=st.text_input("YouTube URL",placeholder="https://www.youtube.com/watch?v=...",label_visibility="collapsed")
 with col_btn:
     analyze_btn=st.button("▶ Analyze",use_container_width=True)
 
@@ -786,55 +799,46 @@ st.markdown('<div class="info-box">💡 <b>Best results:</b> Clear audio, both s
             unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
-# ANALYSIS PIPELINE
+# PIPELINE — runs ONCE, stores in session_state
 # ─────────────────────────────────────────────
-# KEY FIX: Results stored in st.session_state
-# Switching view mode (Quick ↔ Research) does NOT re-run the analysis
-# Both modes always read from the SAME cached session_state dict
-# ─────────────────────────────────────────────
-
 if analyze_btn and youtube_url:
     if not groq_key: st.error("⚠️ Enter your Groq API key in the sidebar."); st.stop()
-
-    # Clear any previous results so fresh analysis starts clean
     st.session_state.pop("analysis_results", None)
     tmp_dir=tempfile.mkdtemp()
 
-    # ── Download ──────────────────────────────
     with st.status("📥 Downloading video…",expanded=True) as status:
         try:
             video_path,title,vid_duration=download_youtube(youtube_url,tmp_dir)
             status.update(label=f"✅ Downloaded: **{title}** ({int(vid_duration)}s)",state="complete")
         except Exception as e: st.error(f"Download failed: {e}"); st.stop()
 
-    # ── MediaPipe ─────────────────────────────
     prog_bar=st.progress(0,text="🔍 Analyzing frames with MediaPipe…")
     def update_prog(v): prog_bar.progress(v,text=f"🔍 Analyzing frames… {int(v*100)}%")
     with st.spinner(""):
         visual_stats=analyze_video(video_path,sample_rate=4,max_frames=500,progress_cb=update_prog)
     prog_bar.progress(1.0,text="✅ Visual analysis complete"); time.sleep(0.2); prog_bar.empty()
 
-    # ── Whisper + PyAnnote ────────────────────
     utterances=[]; speaker_map={"doctor":"SPEAKER_00","patient":"SPEAKER_01"}
-    speaker_stats={}; mp3_path=None; wav_path=None; diarization_method="unknown"
+    speaker_stats={}; wav_path=None; diarization_method="unknown"
 
-    with st.status("🎙️ Groq Whisper (MP3) + PyAnnote (WAV)…",expanded=True) as audio_status:
+    with st.status("🎙️ Groq Whisper + PyAnnote diarization…",expanded=True) as audio_status:
         try:
-            mp3_path,wav_path=extract_audio(video_path,tmp_dir)
-            raw=transcribe_with_diarization(mp3_path,wav_path)
+            wav_path=extract_audio(video_path,tmp_dir)
+            raw=transcribe_with_diarization(wav_path)
             diarization_method=raw.get("diarization_method","unknown")
             utterances=process_diarized_transcript(raw)
+
+            audio_status.update(label="🤖 LLM identifying doctor vs patient…",state="running")
             speaker_map=identify_speakers(utterances)
-            if st.session_state.get("swap_speakers",False):
-                speaker_map={"doctor":speaker_map["patient"],"patient":speaker_map["doctor"]}
+
             speaker_stats=analyze_per_speaker(utterances,speaker_map)
             doc=speaker_stats["doctor"]; pat=speaker_stats["patient"]
-            badge=(f"PyAnnote ~94% · WAV · {raw.get('device_used','')} · {raw.get('segment_count',0)} segs"
-                   if diarization_method=="pyannote" else "Heuristic ~60% — add HF token for accuracy")
+            badge=(f"PyAnnote ~94% · {raw.get('device_used','')}"
+                   if diarization_method=="pyannote" else "Heuristic ~60%")
             audio_status.update(
-                label=(f"✅ Doctor: {doc['word_count']}w {doc['wpm']}WPM {doc['filler_count']}fillers | "
-                       f"Patient: {pat['word_count']}w {pat['wpm']}WPM | "
-                       f"Latency: {speaker_stats['avg_response_latency']}s | {badge}"),
+                label=(f"✅ Doctor ({speaker_map['doctor']}): {doc['word_count']}w {doc['wpm']}WPM | "
+                       f"Patient ({speaker_map['patient']}): {pat['word_count']}w {pat['wpm']}WPM | "
+                       f"Latency: {speaker_stats['avg_response_latency']}s | {badge} | Speaker ID: LLM"),
                 state="complete")
         except Exception as e:
             audio_status.update(label=f"⚠️ Audio failed: {e}",state="error")
@@ -843,18 +847,15 @@ if analyze_btn and youtube_url:
                            "response_latencies":[],"avg_response_latency":None,
                            "total_turns":0,"doctor_turn_pct":None,"patient_turn_pct":None}
 
-    # ── V4 metrics ────────────────────────────
     with st.spinner("📊 Computing v4 metrics…"):
         engagement         = calculate_patient_engagement(utterances,speaker_map)
         hesitation_windows = calculate_hesitation_windows(speaker_stats)
         brow_furrow        = calculate_brow_furrow_index(visual_stats)
         session_arc        = calculate_session_arc(utterances,speaker_map)
 
-    # ── TOPSIS scoring ────────────────────────
     with st.spinner("📐 Calculating TOPSIS + Calgary-Cambridge…"):
         topsis=calculate_topsis_score(visual_stats,speaker_stats)
 
-    # ── Groq Llama feedback ───────────────────
     aligned=align_speech_with_face(utterances,visual_stats,speaker_map)
     feedback=None
     with st.spinner("🤖 Generating AI feedback + empathy score…"):
@@ -864,73 +865,45 @@ if analyze_btn and youtube_url:
         except Exception as e:
             st.error(f"❌ AI feedback error: {e}")
 
-    # ── SCORE LOCK ────────────────────────────
-    # overall_score is ALWAYS topsis["topsis_score"]
-    # LLM result is overwritten here regardless of what LLM returned
-    # Both Quick mode and Research mode read from topsis["topsis_score"] directly
-    # feedback["overall_score"] is set here only for JSON export — never used for display
     if feedback:
-        feedback["overall_score"]=topsis["topsis_score"]   # lock
-        feedback["overall_grade"]=topsis["grade"]          # lock
+        feedback["overall_score"]=topsis["topsis_score"]
+        feedback["overall_grade"]=topsis["grade"]
 
-    # ── STORE IN SESSION STATE ────────────────
-    # This is the KEY FIX for the "different score in different modes" bug:
-    # All results stored once here. Switching Quick ↔ Research just changes
-    # which view renders — the underlying data never changes.
     st.session_state["analysis_results"]={
-        "title"             : title,
-        "topsis"            : topsis,
-        "visual_stats"      : visual_stats,
-        "speaker_stats"     : speaker_stats,
-        "utterances"        : utterances,
-        "speaker_map"       : speaker_map,
-        "feedback"          : feedback,
-        "engagement"        : engagement,
-        "hesitation_windows": hesitation_windows,
-        "brow_furrow"       : brow_furrow,
-        "session_arc"       : session_arc,
-        "diarization_method": diarization_method,
-        "aligned"           : aligned,
+        "title":title,"topsis":topsis,"visual_stats":visual_stats,
+        "speaker_stats":speaker_stats,"utterances":utterances,
+        "speaker_map":speaker_map,"feedback":feedback,
+        "engagement":engagement,"hesitation_windows":hesitation_windows,
+        "brow_furrow":brow_furrow,"session_arc":session_arc,
+        "diarization_method":diarization_method,"aligned":aligned,
     }
-    # Cleanup temp files
     try:
-        for f in [video_path,mp3_path,wav_path]:
+        for f in [video_path,wav_path]:
             if f and os.path.exists(f): os.remove(f)
         os.rmdir(tmp_dir)
     except Exception: pass
 
+elif analyze_btn and not youtube_url:
+    st.warning("Please enter a YouTube URL to analyze.")
+
 # ─────────────────────────────────────────────
-# DISPLAY — reads from session_state
-# Both Quick and Research modes use the SAME data
-# Switching modes never re-runs analysis
+# DISPLAY — from session_state (SAME for both modes)
 # ─────────────────────────────────────────────
 if "analysis_results" in st.session_state:
-    R  = st.session_state["analysis_results"]
-    topsis             = R["topsis"]
-    visual_stats       = R["visual_stats"]
-    speaker_stats      = R["speaker_stats"]
-    utterances         = R["utterances"]
-    speaker_map        = R["speaker_map"]
-    feedback           = R["feedback"]
-    engagement         = R["engagement"]
-    hesitation_windows = R["hesitation_windows"]
-    brow_furrow        = R["brow_furrow"]
-    session_arc        = R["session_arc"]
-    diarization_method = R["diarization_method"]
-    title              = R["title"]
+    R = st.session_state["analysis_results"]
+    topsis=R["topsis"]; visual_stats=R["visual_stats"]; speaker_stats=R["speaker_stats"]
+    utterances=R["utterances"]; speaker_map=R["speaker_map"]; feedback=R["feedback"]
+    engagement=R["engagement"]; hesitation_windows=R["hesitation_windows"]
+    brow_furrow=R["brow_furrow"]; session_arc=R["session_arc"]
+    diarization_method=R["diarization_method"]; title=R["title"]
 
-    # ── The ONE true score source ─────────────
-    # topsis["topsis_score"] is the single source of truth
-    # displayed identically in BOTH Quick and Research modes
     OVERALL_SCORE = topsis["topsis_score"]
     OVERALL_GRADE = topsis["grade"]
 
     st.success(f"✅ Analysis ready: **{title}**")
     doc=speaker_stats.get("doctor",{}); pat=speaker_stats.get("patient",{})
 
-    # ── SHARED SCORE BANNER — shown identically in BOTH modes ─────────────
-    # This is ONE piece of code. OVERALL_SCORE cannot differ between modes
-    # because it is set once from session_state above and never changes.
+    # SHARED SCORE BANNER — identical in both modes
     score_color=("#38a169" if OVERALL_SCORE>=80 else "#3182ce" if OVERALL_SCORE>=65
                  else "#d69e2e" if OVERALL_SCORE>=45 else "#e53e3e")
     st.markdown(
@@ -941,13 +914,10 @@ if "analysis_results" in st.session_state:
         f'TOPSIS + Calgary-Cambridge · Overall Score</div>'
         f'<div style="font-size:3.5rem;font-weight:800;color:{score_color};line-height:1.1;margin:.3rem 0">'
         f'{OVERALL_SCORE}/100</div>'
-        f'<div style="font-size:1.1rem;font-weight:600;color:{score_color}">{OVERALL_GRADE}</div>'
-        f'<div style="font-size:.78rem;color:#a0aec0;margin-top:.3rem">',
+        f'<div style="font-size:1.1rem;font-weight:600;color:{score_color}">{OVERALL_GRADE}</div></div>',
         unsafe_allow_html=True)
 
-    # Debug line — remove after confirming scores match
-    st.caption(f"🔒 Score source: session_state · TOPSIS d+={topsis['d_plus']} d−={topsis['d_minus']} · Mode: {'Quick' if is_quick else 'Research'}")
-
+    st.caption(f"🔒 Score source: session_state · d+={topsis['d_plus']} d−={topsis['d_minus']} · Mode: {'Quick' if is_quick else 'Research'}")
     st.divider()
 
     # ══════════════════════════════════════════
@@ -956,16 +926,15 @@ if "analysis_results" in st.session_state:
     if is_quick:
         st.markdown('<span class="mode-badge mode-quick">👨‍⚕️ Quick Feedback</span>',unsafe_allow_html=True)
 
-        # ── Quick mode: empathy + engagement below the shared banner ──
         emp=feedback.get("empathy_score",0) if feedback else 0
-        emp_col=("#38a169" if emp>=75 else "#3182ce" if emp>=50 else "#d69e2e" if emp>=30 else "#e53e3e")
+        emp_col="#38a169" if emp>=75 else "#3182ce" if emp>=50 else "#d69e2e" if emp>=30 else "#e53e3e"
         ec1,ec2=st.columns(2)
         with ec1:
             st.markdown(f'<div class="metric-card"><div class="label">Empathy Score</div>'
                         f'<div class="value" style="color:{emp_col}">{emp}/100</div>'
                         f'<div class="sub">Doctor warmth + tone</div></div>',unsafe_allow_html=True)
         with ec2:
-            eng_col=("#38a169" if engagement["score"]>=70 else "#d69e2e" if engagement["score"]>=40 else "#e53e3e")
+            eng_col="#38a169" if engagement["score"]>=70 else "#d69e2e" if engagement["score"]>=40 else "#e53e3e"
             st.markdown(f'<div class="metric-card"><div class="label">Patient Engagement</div>'
                         f'<div class="value" style="color:{eng_col}">{engagement["grade"]}</div>'
                         f'<div class="sub">{engagement["words_per_turn"]} words/turn</div></div>',unsafe_allow_html=True)
@@ -1018,25 +987,22 @@ if "analysis_results" in st.session_state:
     else:
         st.markdown('<span class="mode-badge mode-research">🔬 Research Mode</span>',unsafe_allow_html=True)
 
-        # TOPSIS explanation from LLM (score shown in shared banner above)
         if feedback and feedback.get("topsis_explanation"):
             st.markdown(
                 f'<div class="topsis-box">'
                 f'📐 <b>TOPSIS Explanation:</b> {feedback["topsis_explanation"]}<br>'
-                f'd+: <b>{topsis["d_plus"]}</b> (distance from ideal) &nbsp;|&nbsp; '
-                f'd−: <b>{topsis["d_minus"]}</b> (distance from worst)</div>',
+                f'd+: <b>{topsis["d_plus"]}</b> &nbsp;|&nbsp; d−: <b>{topsis["d_minus"]}</b></div>',
                 unsafe_allow_html=True)
 
         emp=feedback.get("empathy_score",0) if feedback else 0
-        cols=st.columns(8)
         metrics=[
-            ("Eye Contact",  f"{visual_stats['eye_contact_pct']}%","strong gaze",                  score_class(int(visual_stats['eye_contact_pct']))),
-            ("Doctor WPM",   str(doc.get("wpm",0)),     "speech rate",                             "score-good" if 110<=doc.get("wpm",0)<=160 else "score-fair"),
-            ("Patient WPM",  str(pat.get("wpm",0)),     "speech rate",                             "score-good" if pat.get("wpm",0)>50 else "score-fair"),
-            ("Dr Fillers",   str(doc.get("filler_count",0)),"filler words",                        "score-good" if doc.get("filler_count",0)<5 else "score-fair" if doc.get("filler_count",0)<15 else "score-poor"),
-            ("Avg Latency",  f"{speaker_stats.get('avg_response_latency',0) or 0}s","patient",     "score-good" if (speaker_stats.get("avg_response_latency",0) or 0)<2 else "score-fair"),
-            ("Turn Balance", f"{speaker_stats.get('doctor_turn_pct',0)}%","doctor turns",          "score-good" if 40<=speaker_stats.get("doctor_turn_pct",0)<=60 else "score-fair"),
-            ("Empathy",      f"{emp}/100",              "warmth",                                  score_class(emp)),
+            ("Eye Contact",f"{visual_stats['eye_contact_pct']}%","strong gaze",score_class(int(visual_stats['eye_contact_pct']))),
+            ("Doctor WPM",str(doc.get("wpm",0)),"speech rate","score-good" if 110<=doc.get("wpm",0)<=160 else "score-fair"),
+            ("Patient WPM",str(pat.get("wpm",0)),"speech rate","score-good" if pat.get("wpm",0)>50 else "score-fair"),
+            ("Dr Fillers",str(doc.get("filler_count",0)),"filler words","score-good" if doc.get("filler_count",0)<5 else "score-fair" if doc.get("filler_count",0)<15 else "score-poor"),
+            ("Avg Latency",f"{speaker_stats.get('avg_response_latency',0) or 0}s","patient","score-good" if (speaker_stats.get("avg_response_latency",0) or 0)<2 else "score-fair"),
+            ("Turn Balance",f"{speaker_stats.get('doctor_turn_pct',0)}%","doctor turns","score-good" if 40<=speaker_stats.get("doctor_turn_pct",0)<=60 else "score-fair"),
+            ("Empathy",f"{emp}/100","warmth",score_class(emp)),
         ]
         cols=st.columns(7)
         for col,(lbl,val,sub,cls) in zip(cols,metrics):
@@ -1077,17 +1043,10 @@ if "analysis_results" in st.session_state:
             ecol="#38a169" if es>=75 else "#3182ce" if es>=50 else "#d69e2e" if es>=30 else "#e53e3e"
             st.markdown("#### 💚 Empathy Score")
             ea,eb=st.columns([1,3])
-            with ea:
-                st.markdown(f'<div class="metric-card"><div class="label">Empathy</div>'
-                            f'<div class="value" style="color:{ecol}">{es}/100</div>'
-                            f'<div class="sub">warmth + tone</div></div>',unsafe_allow_html=True)
+            with ea: render_metric("Empathy",f"{es}/100","warmth",score_class(es))
             with eb:
                 st.markdown(f'<div class="engagement-card" style="margin-top:.5rem">'
-                            f'<b>Assessment:</b> {feedback.get("empathy_assessment","")}</div>',
-                            unsafe_allow_html=True)
-                st.markdown(f'<div style="background:#edf2f7;border-radius:999px;height:10px;overflow:hidden;margin-top:.5rem">'
-                            f'<div style="width:{es}%;height:100%;background:{ecol};border-radius:999px"></div></div>',
-                            unsafe_allow_html=True)
+                            f'<b>Assessment:</b> {feedback.get("empathy_assessment","")}</div>',unsafe_allow_html=True)
 
         st.divider()
 
@@ -1104,8 +1063,7 @@ if "analysis_results" in st.session_state:
             "score-good" if engagement["elaboration_ratio"]>=0.4 else "score-fair")
         if feedback and feedback.get("hesitation_analysis"):
             st.markdown(f'<div class="arc-card" style="margin-top:.5rem">'
-                        f'🔍 <b>Hesitation interpretation:</b> {feedback["hesitation_analysis"]}</div>',
-                        unsafe_allow_html=True)
+                        f'🔍 <b>Hesitation interpretation:</b> {feedback["hesitation_analysis"]}</div>',unsafe_allow_html=True)
 
         st.divider()
 
@@ -1128,15 +1086,11 @@ if "analysis_results" in st.session_state:
         # Brow Furrow
         st.markdown("#### 🤨 Brow Furrow — Confusion Signal")
         bf1,bf2=st.columns(2)
-        with bf1:
-            render_metric("Furrow %",f"{brow_furrow['pct']}%",f"{brow_furrow['count']} frames",
-                "score-good" if brow_furrow["pct"]<10 else "score-fair" if brow_furrow["pct"]<25 else "score-poor")
+        with bf1: render_metric("Furrow %",f"{brow_furrow['pct']}%",f"{brow_furrow['count']} frames",
+            "score-good" if brow_furrow["pct"]<10 else "score-fair" if brow_furrow["pct"]<25 else "score-poor")
         with bf2:
             bfc="#38a169" if brow_furrow["pct"]<10 else "#d69e2e" if brow_furrow["pct"]<25 else "#e53e3e"
-            st.markdown(f'<div class="arc-card"><b>Interpretation:</b> {brow_furrow["interpretation"]}<br>'
-                        f'<div style="background:#edf2f7;border-radius:999px;height:8px;overflow:hidden;margin-top:.5rem">'
-                        f'<div style="width:{min(brow_furrow["pct"]*3,100)}%;height:100%;'
-                        f'background:{bfc};border-radius:999px"></div></div></div>',unsafe_allow_html=True)
+            st.markdown(f'<div class="arc-card"><b>Interpretation:</b> {brow_furrow["interpretation"]}</div>',unsafe_allow_html=True)
 
         st.divider()
 
@@ -1167,6 +1121,42 @@ if "analysis_results" in st.session_state:
 
         st.divider()
 
+        # Conversation
+        if utterances:
+            st.markdown("### 💬 Conversation Overview")
+            st.caption(f"🔵 Doctor ({speaker_map['doctor']}) · 🟢 Patient ({speaker_map['patient']}) · "
+                       f"Diarization: {diarization_method.upper()} · Speaker ID: LLM")
+            for i,utt in enumerate(utterances[:6]):
+                is_doctor=utt["speaker"]==speaker_map["doctor"]
+                role="👨‍⚕️ Doctor" if is_doctor else "🧑 Patient"
+                avatar="👨‍⚕️" if is_doctor else "🧑"
+                ts=f"{utt.get('start_s',0)}s"; latency=""
+                if not is_doctor and i>0:
+                    prev=utterances[i-1]
+                    if prev["speaker"]==speaker_map["doctor"]:
+                        gap=round(utt.get("start_s",0)-prev.get("end_s",0),1)
+                        if 0<gap<15: latency=f"  ⏱ *{gap}s to respond*"
+                with st.chat_message(name=role,avatar=avatar):
+                    st.markdown(f"**{ts}**{latency}"); st.write(utt["text"])
+
+            if len(utterances)>6:
+                with st.expander(f"📄 Show full conversation ({len(utterances)} turns total)"):
+                    for i,utt in enumerate(utterances):
+                        is_doctor=utt["speaker"]==speaker_map["doctor"]
+                        color="#2b6cb0" if is_doctor else "#276749"; bg="#ebf8ff" if is_doctor else "#f0fff4"
+                        role="👨‍⚕️ Doctor" if is_doctor else "🧑 Patient"; latency=""
+                        if not is_doctor and i>0:
+                            prev=utterances[i-1]
+                            if prev["speaker"]==speaker_map["doctor"]:
+                                gap=round(utt["start_s"]-prev["end_s"],1)
+                                if 0<=gap<15: latency=f" · ⏱ {gap}s"
+                        st.markdown(f'<div style="background:{bg};border-radius:8px;padding:.5rem .8rem;margin-bottom:.3rem;'
+                                    f'border-left:3px solid {color}"><span style="color:{color};font-weight:700;font-size:.75rem">'
+                                    f'{role} · {utt["start_s"]}s{latency}</span><br>'
+                                    f'<span style="color:#2d3748;font-size:.85rem">{utt["text"]}</span></div>',unsafe_allow_html=True)
+
+        st.divider()
+
         # Visual Analysis
         st.markdown("### 👁️ Visual Analysis")
         v1,v2=st.columns(2)
@@ -1182,8 +1172,7 @@ if "analysis_results" in st.session_state:
                 for s,e in visual_stats["gaze_away_windows"][:5]:
                     st.markdown(f'<div style="border-left:3px solid #4299e1;padding-left:1rem;margin-bottom:.8rem">'
                                 f'<div style="font-size:.75rem;color:#4299e1;font-weight:600">⏱ {s}s – {e}s</div>'
-                                f'<div style="font-size:.85rem;color:#4a5568">Reduced eye contact</div></div>',
-                                unsafe_allow_html=True)
+                                f'<div style="font-size:.85rem;color:#4a5568">Reduced eye contact</div></div>',unsafe_allow_html=True)
             if visual_stats.get("nod_timestamps"):
                 nod_str=" · ".join(f"{t}s" for t in visual_stats["nod_timestamps"][:8])
                 st.markdown(f'<div class="info-box">🔄 Nodding at: {nod_str}</div>',unsafe_allow_html=True)
@@ -1204,12 +1193,12 @@ if "analysis_results" in st.session_state:
             st.markdown("<br>",unsafe_allow_html=True)
             fc1,fc2=st.columns(2)
             with fc1:
-                render_feedback_block("Eye Contact",     "👁️",pinned_block(feedback,"eye_contact_feedback",   "eye_contact",    topsis))
-                render_feedback_block("Doctor's Speech", "🎙️",pinned_block(feedback,"doctor_speech_feedback", "speech_clarity",  topsis))
-                render_feedback_block("Listening Skills","👂",pinned_block(feedback,"listening_feedback",      "turn_balance",    topsis))
+                render_feedback_block("Eye Contact","👁️",pinned_block(feedback,"eye_contact_feedback","eye_contact",topsis))
+                render_feedback_block("Doctor's Speech","🎙️",pinned_block(feedback,"doctor_speech_feedback","speech_clarity",topsis))
+                render_feedback_block("Listening Skills","👂",pinned_block(feedback,"listening_feedback","turn_balance",topsis))
             with fc2:
-                render_feedback_block("Body Language",   "🙆",pinned_block(feedback,"body_language_feedback",  "body_language",   topsis))
-                render_feedback_block("Patient Impact",  "💙",pinned_block(feedback,"patient_impact_analysis", "response_latency",topsis))
+                render_feedback_block("Body Language","🙆",pinned_block(feedback,"body_language_feedback","body_language",topsis))
+                render_feedback_block("Patient Impact","💙",pinned_block(feedback,"patient_impact_analysis","response_latency",topsis))
 
             st.markdown("### 🎯 Priority Actions")
             if feedback.get("priority_actions"):
@@ -1247,9 +1236,9 @@ if "analysis_results" in st.session_state:
         with st.expander("🗃️ Raw Analysis Data (JSON)"):
             st.json({
                 "version":"v4","algorithm":"TOPSIS + Calgary-Cambridge",
-                "score_source":"topsis[topsis_score] — immutable",
-                "overall_score":OVERALL_SCORE,
-                "diarization_method":diarization_method,
+                "score_source":"topsis[topsis_score] — immutable, same in both modes",
+                "overall_score":OVERALL_SCORE,"speaker_id_method":"LLM (Llama 3.3 70B)",
+                "speaker_map":speaker_map,"diarization_method":diarization_method,
                 "topsis_result":{k:v for k,v in topsis.items() if k!="breakdown"},
                 "topsis_breakdown":{k:{"label":v["label"],"raw_value":v["raw_value"],
                                        "normalized":v["normalized"],"weighted":v["weighted"],
@@ -1264,12 +1253,9 @@ if "analysis_results" in st.session_state:
                 "ai_feedback":feedback,
             })
 
-elif analyze_btn and not youtube_url:
-    st.warning("Please enter a YouTube URL to analyze.")
-
 st.markdown(
     '<div style="text-align:center;color:#a0aec0;font-size:.8rem;margin-top:3rem;'
     'padding:1rem;border-top:1px solid #e2e8f0">'
-    'v4 · Groq Whisper (MP3) + PyAnnote (WAV · Mac M1 MPS) + Groq Llama 3.3 70B · '
+    'v4 · Groq Whisper + PyAnnote (num_speakers=2) + LLM Speaker ID + Groq Llama 3.3 70B · '
     'TOPSIS + Calgary-Cambridge · Empathy · Engagement · Hesitation · Brow Furrow · Session Arc'
     '</div>',unsafe_allow_html=True)
