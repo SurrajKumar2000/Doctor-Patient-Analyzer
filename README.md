@@ -54,7 +54,7 @@ The score is computed before the LLM is called. `feedback["overall_score"]` is o
 | **v1** | Groq Whisper transcription + heuristic diarization (~60% accuracy) |
 | **v2** | MediaPipe FaceMesh + TOPSIS + Calgary-Cambridge scoring + Quick/Research modes |
 | **v3** | PyAnnote 3.1 diarization + WAV audio + 3-strategy merge + 4-signal speaker ID |
-| **v4** | 5 new metrics + session state score fix + transcript removed |
+| **v4** | LLM speaker ID + PyAnnote num_speakers=2 + 5 new metrics + session_state score fix |
 
 ### v4 New Metrics
 
