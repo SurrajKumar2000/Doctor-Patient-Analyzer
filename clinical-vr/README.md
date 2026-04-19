@@ -17,6 +17,9 @@ Every session is scored on clinical communication quality.
 
 ## Screenshots
 
+### Patient Behaviour Config
+![Patient Profile](Image_0.png)
+
 ### Patient Profile — Clinical Brief
 ![Patient Profile](Image_1.png)
 
