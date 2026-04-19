@@ -21,7 +21,7 @@ Every session is scored on clinical communication quality.
 ![Patient Profile](/Users/sk/Downloads/doc-pat/Doctor-Patient-Analyzer/clinical-vr/Screenshot 2026-04-18 at 7.06.21 PM.png)
 
 ### Consultation Room — Session Active
-![Consultation Room](Screenshot_2026-04-18_at_7_06_30_PM.png)
+![Consultation Room](<Screenshot 2026-04-18 at 7.06.30 PM.png>)
 
 ### Consultation Room — Full View
 ![Full Room View](Screenshot_2026-04-18_at_7_07_09_PM.png)
