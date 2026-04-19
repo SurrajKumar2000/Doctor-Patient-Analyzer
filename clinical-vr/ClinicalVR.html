@@ -1,0 +1,3196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClinicalVR — Patient Communication Trainer</title>
+<style>
+/* ============================================================
+   ClinicalVR — Main Stylesheet
+   Design: clinical, precise, dark-mode with teal accent
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+/* ── TOKENS ── */
+:root {
+  --bg:     #080b10;
+  --s1:     #0d1117;
+  --s2:     #121820;
+  --s3:     #171f2a;
+  --b1:     #1e2838;
+  --b2:     #273347;
+  --b3:     #324060;
+
+  --accent:  #3b82f6;
+  --accent2: #60a5fa;
+  --ok:      #10b981;
+  --ok2:     #34d399;
+  --warn:    #f59e0b;
+  --warn2:   #fbbf24;
+  --danger:  #ef4444;
+  --danger2: #f87171;
+  --purple:  #8b5cf6;
+  --purple2: #a78bfa;
+
+  --t1: #e8edf5;
+  --t2: #7c8fa8;
+  --t3: #3d4f63;
+
+  --mono: 'DM Mono', monospace;
+  --sans: 'DM Sans', sans-serif;
+  --r: 10px;
+}
+
+/* ── RESET ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  background: var(--bg);
+  color: var(--t1);
+  font-family: var(--sans);
+  height: 100%;
+  overflow: hidden;
+  font-size: 14px;
+}
+
+/* ── SCREENS ── */
+.screen { display: none; height: 100vh; flex-direction: column; overflow-y: auto; }
+.screen.on { display: flex; }
+
+/* ============================================================
+   SCREEN 1 — TRAINER CONFIG
+   ============================================================ */
+#sc-config {
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: radial-gradient(ellipse at 20% 50%, rgba(59,130,246,.06) 0%, transparent 60%);
+}
+
+.cfg-wrap {
+  width: 100%;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Logo */
+.logo-row { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+.logo-mark {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent), var(--purple));
+  display: flex; align-items: center; justify-content: center;
+}
+.logo-mark svg { width: 20px; height: 20px; fill: white; }
+.logo-name { font-family: var(--mono); font-size: 15px; font-weight: 500; letter-spacing: .04em; }
+.logo-tag  { font-size: 11px; color: var(--t2); margin-left: auto; font-family: var(--mono); }
+
+.cfg-title { font-size: 24px; font-weight: 600; letter-spacing: -.02em; line-height: 1.25; }
+.cfg-sub   { font-size: 13px; color: var(--t2); line-height: 1.65; margin-top: 4px; }
+
+/* Card */
+.card {
+  background: var(--s1);
+  border: .5px solid var(--b1);
+  border-radius: var(--r);
+  padding: 16px;
+}
+
+.card-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--t3);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-label::after { content: ''; flex: 1; height: .5px; background: var(--b1); }
+
+/* API inputs */
+.api-input {
+  width: 100%;
+  background: var(--s2);
+  border: .5px solid var(--b2);
+  border-radius: 8px;
+  color: var(--t1);
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 9px 12px;
+  outline: none;
+  transition: border-color .15s;
+}
+.api-input:focus { border-color: var(--accent); }
+.api-note { font-size: 11px; color: var(--t3); margin-top: 7px; line-height: 1.5; }
+
+/* Age grid */
+.age-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-bottom: 14px; }
+.age-btn {
+  padding: 10px 6px;
+  border-radius: 8px;
+  border: .5px solid var(--b2);
+  background: var(--s2);
+  cursor: pointer;
+  text-align: center;
+  transition: all .18s;
+  user-select: none;
+}
+.age-btn:hover   { border-color: var(--b3); background: var(--s3); }
+.age-btn.sel     { border-color: var(--accent); background: rgba(59,130,246,.1); }
+.age-btn .name   { font-size: 13px; font-weight: 500; color: var(--t1); margin-bottom: 1px; }
+.age-btn.sel .name { color: var(--accent2); }
+.age-btn .range  { font-family: var(--mono); font-size: 10px; color: var(--t3); }
+.age-btn.sel .range { color: var(--accent); opacity: .7; }
+
+/* Sliders */
+.slider-grid { display: flex; flex-direction: column; gap: 11px; }
+.slider-row  { display: flex; align-items: center; gap: 12px; }
+.slider-label { font-size: 12px; color: var(--t2); width: 140px; flex-shrink: 0; }
+.slider-track { flex: 1; }
+input[type=range] {
+  width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--b2);
+  outline: none;
+  cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.slider-val {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  width: 22px;
+  text-align: right;
+  color: var(--t1);
+}
+
+/* Condition chips */
+.chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.chip {
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: .5px solid var(--b2);
+  background: var(--s2);
+  font-size: 11px;
+  color: var(--t2);
+  cursor: pointer;
+  transition: all .15s;
+  user-select: none;
+}
+.chip:hover { border-color: var(--b3); color: var(--t1); }
+.chip.sel   { border-color: var(--purple); background: rgba(139,92,246,.1); color: var(--purple2); }
+
+/* RPM avatar section */
+.rpm-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.rpm-create-btn {
+  padding: 9px 18px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: filter .15s;
+}
+.rpm-create-btn:hover { filter: brightness(1.1); }
+
+/* Voice selector */
+.voice-select {
+  background: var(--s2);
+  border: .5px solid var(--b2);
+  border-radius: 8px;
+  color: var(--t1);
+  font-family: var(--sans);
+  font-size: 12px;
+  padding: 6px 10px;
+  outline: none;
+  flex: 1;
+}
+
+/* Generate button */
+.gen-btn {
+  padding: 13px 28px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  transition: all .18s;
+}
+.gen-btn:hover    { filter: brightness(1.1); transform: translateY(-1px); }
+.gen-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+/* ============================================================
+   SCREEN 2 — GENERATING
+   ============================================================ */
+#sc-gen {
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 24px;
+}
+.gen-spinner {
+  width: 44px; height: 44px;
+  border: 2px solid var(--b2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .85s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.gen-heading { font-size: 18px; font-weight: 600; text-align: center; }
+.gen-sub { font-size: 13px; color: var(--t2); text-align: center; max-width: 380px; line-height: 1.6; }
+.gen-log {
+  background: var(--s1);
+  border: .5px solid var(--b1);
+  border-radius: var(--r);
+  padding: 14px 16px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--t3);
+  line-height: 2.1;
+  width: 100%;
+  max-width: 440px;
+  min-height: 90px;
+}
+.gl     { color: var(--ok2); }
+.gl.dim { color: var(--t3); }
+
+/* ============================================================
+   SCREEN 3 — PATIENT PROFILE
+   ============================================================ */
+#sc-profile { align-items: center; padding: 24px; overflow-y: auto; }
+.prof-wrap {
+  width: 100%;
+  max-width: 680px;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  padding-bottom: 28px;
+}
+
+.prof-badge-row { display: flex; align-items: center; gap: 10px; }
+.prof-badge {
+  font-family: var(--mono);
+  font-size: 9px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: rgba(16,185,129,.1);
+  color: var(--ok2);
+  border: .5px solid rgba(16,185,129,.25);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.prof-title { font-size: 19px; font-weight: 600; }
+
+.patient-hero {
+  background: var(--s1);
+  border: .5px solid var(--b1);
+  border-radius: var(--r);
+  padding: 18px;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.pat-av {
+  width: 50px; height: 50px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 19px; font-weight: 700;
+  flex-shrink: 0;
+  border: .5px solid var(--b2);
+}
+.pat-name  { font-size: 19px; font-weight: 600; letter-spacing: -.02em; margin-bottom: 2px; }
+.pat-meta  { font-size: 12px; color: var(--t2); margin-bottom: 10px; }
+.pat-params { display: flex; flex-wrap: wrap; gap: 6px; }
+.param-chip {
+  font-size: 11px; padding: 3px 10px;
+  border-radius: 20px; background: var(--s2);
+  border: .5px solid var(--b2); color: var(--t2);
+}
+.param-chip.high { background: rgba(239,68,68,.08);  border-color: rgba(239,68,68,.25);  color: var(--danger2); }
+.param-chip.med  { background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.25); color: var(--warn2); }
+.param-chip.low  { background: rgba(16,185,129,.08); border-color: rgba(16,185,129,.25); color: var(--ok2); }
+.param-chip.cond { background: rgba(139,92,246,.08); border-color: rgba(139,92,246,.25); color: var(--purple2); }
+
+.info-card { background: var(--s1); border: .5px solid var(--b1); border-radius: var(--r); padding: 16px; }
+.ic-head {
+  font-family: var(--mono); font-size: 10px; color: var(--t3);
+  text-transform: uppercase; letter-spacing: .07em; margin-bottom: 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.ic-head::after { content: ''; flex: 1; height: .5px; background: var(--b1); }
+
+.mystery-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mystery-box { border-radius: 8px; padding: 12px; }
+.mb-present { background: rgba(59,130,246,.06);  border: .5px solid rgba(59,130,246,.2); }
+.mb-real    { background: rgba(239,68,68,.06);   border: .5px solid rgba(239,68,68,.2); }
+.mb-label   { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+.mb-label.b { color: var(--accent2); }
+.mb-label.r { color: var(--danger2); }
+.mb-val     { font-size: 12px; color: var(--t1); line-height: 1.6; }
+
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.fk { font-family: var(--mono); font-size: 10px; color: var(--t3); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 3px; }
+.fv { font-size: 12px; color: var(--t1); line-height: 1.5; }
+
+.trig-row { display: flex; flex-wrap: wrap; gap: 5px; }
+.trig { font-size: 11px; padding: 3px 10px; border-radius: 20px; background: rgba(239,68,68,.08); border: .5px solid rgba(239,68,68,.2); color: var(--danger2); }
+
+.prof-actions { display: flex; gap: 9px; }
+.btn-regen {
+  background: transparent; border: .5px solid var(--b2); color: var(--t2);
+  padding: 11px 20px; border-radius: 8px; font-family: var(--sans);
+  font-size: 13px; cursor: pointer; transition: all .15s;
+}
+.btn-regen:hover { border-color: var(--b3); color: var(--t1); }
+.btn-enter {
+  flex: 1; background: var(--ok); color: #020f07; font-weight: 700;
+  padding: 12px 28px; border-radius: 8px; border: none;
+  font-family: var(--sans); font-size: 14px; cursor: pointer; transition: all .15s;
+}
+.btn-enter:hover { filter: brightness(1.08); transform: translateY(-1px); }
+
+/* ============================================================
+   SCREEN 4 — VR SESSION
+   ============================================================ */
+#sc-session { position: relative; overflow: hidden; background: #060a0f; }
+#three-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* Status bar */
+#vr-status {
+  position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+  z-index: 40;
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(6,10,15,.82);
+  border: .5px solid rgba(255,255,255,.07);
+  border-radius: 24px;
+  padding: 6px 16px;
+  font-family: var(--mono); font-size: 11px; color: rgba(232,237,245,.5);
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+  white-space: nowrap;
+}
+.vr-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); flex-shrink: 0; }
+.vr-dot.thinking { background: var(--warn); animation: vblink .6s infinite; }
+.vr-dot.speaking { background: var(--accent); animation: vblink .4s infinite; }
+@keyframes vblink { 0%,100% { opacity: 1; } 50% { opacity: .15; } }
+
+/* Live feedback pill */
+#live-fb {
+  position: absolute; top: 56px; left: 50%; transform: translateX(-50%);
+  z-index: 40;
+  font-family: var(--mono); font-size: 11px;
+  background: rgba(6,10,15,.9);
+  border-radius: 24px; padding: 5px 18px;
+  backdrop-filter: blur(10px);
+  border: .5px solid rgba(255,255,255,.07);
+  pointer-events: none;
+  opacity: 0; transition: opacity .4s;
+  white-space: nowrap;
+}
+#live-fb.show { opacity: 1; }
+
+/* HUD — trust / tension (top left) */
+#hud-tl {
+  position: absolute; top: 16px; left: 16px;
+  z-index: 40;
+  display: flex; flex-direction: column; gap: 7px;
+  pointer-events: none;
+}
+.hud-card {
+  background: rgba(6,10,15,.82);
+  border: .5px solid rgba(255,255,255,.07);
+  border-radius: 8px; padding: 8px 12px;
+  backdrop-filter: blur(10px);
+  font-family: var(--mono); font-size: 10px;
+}
+.hc-label { color: rgba(124,143,168,.7); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+.hc-val   { font-size: 14px; font-weight: 500; color: var(--t1); }
+.hc-bar   { height: 3px; border-radius: 2px; background: rgba(255,255,255,.08); margin-top: 5px; overflow: hidden; }
+.hc-fill  { height: 100%; border-radius: 2px; transition: width .7s ease, background .5s; }
+.hc-state { font-size: 11px; margin-top: 3px; }
+
+/* HUD — exit + end + exchanges (top right) */
+#hud-tr {
+  position: absolute; top: 16px; right: 16px;
+  z-index: 40;
+  display: flex; flex-direction: column; gap: 7px;
+  align-items: flex-end;
+}
+.vr-btn {
+  background: rgba(6,10,15,.82);
+  border: .5px solid rgba(255,255,255,.07);
+  color: rgba(124,143,168,.8);
+  border-radius: 8px; padding: 7px 14px;
+  font-family: var(--sans); font-size: 12px;
+  cursor: pointer; backdrop-filter: blur(10px);
+  transition: color .15s; white-space: nowrap;
+}
+.vr-btn:hover { color: var(--t1); }
+.vr-btn.green { border-color: rgba(16,185,129,.3); color: var(--ok2); }
+.vr-btn.green:hover { background: rgba(16,185,129,.1); }
+
+/* Inner monologue (top right below controls) */
+#hud-thought {
+  position: absolute; top: 110px; right: 16px;
+  z-index: 40; width: 220px; pointer-events: none;
+}
+.ht-label { font-family: var(--mono); font-size: 9px; color: rgba(7, 0, 0, 0.922); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 5px; }
+.thought-item {
+  background: rgba(239,68,68,.06);
+  border: .5px dashed rgba(6, 0, 0, 0.25);
+  border-radius: 7px; padding: 7px 9px;
+  font-size: 11px; color: #070101;
+  font-style: italic; line-height: 1.5;
+  animation: fdin .25s ease;
+}
+@keyframes fdin { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Patient subtitle (centre screen) */
+#pat-sub {
+  position: absolute; top: 18%; left: 50%; transform: translateX(-50%);
+  max-width: 480px;
+  background: rgba(6,10,15,.9);
+  border: .5px solid rgba(255,255,255,.08);
+  border-radius: 12px; padding: 11px 20px;
+  font-size: 14px; color: var(--t1); line-height: 1.55;
+  display: none; z-index: 40;
+  text-align: center;
+  backdrop-filter: blur(10px); pointer-events: none;
+}
+
+/* Doctor transcript (bottom left) */
+#doc-trans {
+  position: absolute; bottom: 120px; left: 20px;
+  z-index: 40; max-width: 260px;
+  display: flex; flex-direction: column; gap: 4px;
+  pointer-events: none;
+}
+.dt {
+  background: rgba(59,130,246,.15);
+  border: .5px solid rgba(59,130,246,.3);
+  border-radius: 9px 9px 2px 9px;
+  padding: 7px 12px; font-size: 12px;
+  color: rgba(232,237,245,.9); line-height: 1.5;
+  backdrop-filter: blur(8px);
+  animation: fdin .2s ease;
+}
+
+/* Mystery panel (bottom right) */
+#hud-mystery {
+  position: absolute; bottom: 28px; right: 16px;
+  z-index: 40; width: 220px; pointer-events: none;
+}
+.mystery-inner {
+  background: rgba(6,10,15,.82);
+  border: .5px solid rgba(245,158,11,.15);
+  border-radius: 8px; padding: 10px 12px;
+  backdrop-filter: blur(10px);
+}
+.my-label { font-family: var(--mono); font-size: 9px; color: rgba(245,158,11,.6); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 6px; }
+.my-row { margin-bottom: 5px; }
+.my-row:last-child { margin-bottom: 0; }
+.my-key { font-family: var(--mono); font-size: 9px; color: rgba(124,143,168,.6); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 2px; display: flex; align-items: center; gap: 5px; }
+.my-val    { font-size: 11px; color: var(--t1); line-height: 1.4; }
+.my-locked { font-size: 11px; color: var(--t3); filter: blur(3.5px); user-select: none; }
+.my-badge  { font-size: 9px; padding: 1px 6px; border-radius: 6px; background: rgba(16,185,129,.1); color: var(--ok2); border: .5px solid rgba(16,185,129,.25); filter: none; font-family: var(--mono); }
+.my-xcount { font-family: var(--mono); font-size: 9px; color: rgba(61,79,99,.8); text-align: right; margin-top: 5px; }
+
+/* Mic button */
+#mic-btn {
+  position: absolute; bottom: 36px; left: 50%; transform: translateX(-50%);
+  z-index: 50;
+  width: 64px; height: 64px; border-radius: 50%;
+  background: rgba(59,130,246,.15);
+  border: 1.5px solid rgba(59,130,246,.4);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all .2s;
+}
+#mic-btn:hover        { background: rgba(59,130,246,.25); }
+#mic-btn.listening    { background: rgba(239,68,68,.2); border-color: rgba(239,68,68,.6); animation: mpulse 1s infinite; }
+#mic-btn.pat-speaking { background: rgba(16,185,129,.12); border-color: rgba(16,185,129,.4); }
+@keyframes mpulse { 0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,.4); } 50% { box-shadow: 0 0 0 14px rgba(239,68,68,0); } }
+.mic-svg { width: 26px; height: 26px; fill: rgba(96,165,250,.9); transition: fill .2s; }
+#mic-btn.listening .mic-svg    { fill: var(--danger2); }
+#mic-btn.pat-speaking .mic-svg { fill: var(--ok2); }
+
+#mic-hint {
+  position: absolute; bottom: 110px; left: 50%; transform: translateX(-50%);
+  font-family: var(--mono); font-size: 10px;
+  color: rgba(124,143,168,.45);
+  z-index: 40; pointer-events: none; white-space: nowrap; letter-spacing: .04em;
+}
+
+/* Loading overlay */
+#rpm-loading {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  z-index: 60;
+  background: rgba(10,14,22,.9);
+  border: .5px solid rgba(59,130,246,.3);
+  border-radius: 12px; padding: 20px 32px;
+  text-align: center; backdrop-filter: blur(8px);
+  pointer-events: none; display: none;
+}
+
+/* ============================================================
+   SCREEN 5 — DEBRIEF
+   ============================================================ */
+#sc-debrief {
+  align-items: center; padding: 28px 20px; overflow-y: auto;
+  background: radial-gradient(ellipse at 80% 20%, rgba(16,185,129,.04) 0%, transparent 55%);
+}
+.db-wrap {
+  width: 100%; max-width: 720px;
+  display: flex; flex-direction: column; gap: 13px;
+  padding-bottom: 32px;
+}
+
+.db-header { display: flex; align-items: flex-start; gap: 16px; }
+.db-title-col { flex: 1; }
+.db-eyebrow { font-family: var(--mono); font-size: 10px; color: var(--t3); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px; }
+.db-title   { font-size: 22px; font-weight: 600; letter-spacing: -.02em; }
+.db-score-col { text-align: right; }
+.db-score-label { font-family: var(--mono); font-size: 10px; color: var(--t3); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 3px; }
+.db-score { font-size: 40px; font-weight: 700; letter-spacing: -.03em; line-height: 1; }
+
+.stat-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.stat-card {
+  background: var(--s1); border: .5px solid var(--b1);
+  border-radius: var(--r); padding: 14px; text-align: center;
+}
+.stat-label { font-family: var(--mono); font-size: 10px; color: var(--t3); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; }
+.stat-val   { font-size: 22px; font-weight: 600; }
+
+.db-section { background: var(--s1); border: .5px solid var(--b1); border-radius: var(--r); padding: 16px; }
+.db-sec-head {
+  font-family: var(--mono); font-size: 10px; color: var(--t3);
+  text-transform: uppercase; letter-spacing: .07em; margin-bottom: 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+.db-sec-head::after { content: ''; flex: 1; height: .5px; background: var(--b1); }
+
+.skill-row { display: flex; flex-direction: column; gap: 3px; margin-bottom: 12px; }
+.skill-row:last-child { margin-bottom: 0; }
+.skill-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+.skill-name  { font-size: 13px; color: var(--t1); }
+.skill-score { font-family: var(--mono); font-size: 12px; font-weight: 500; }
+.skill-bar-bg   { height: 5px; background: var(--b2); border-radius: 3px; overflow: hidden; }
+.skill-bar-fill { height: 100%; border-radius: 3px; transition: width 1s ease; }
+.skill-note { font-size: 11px; color: var(--t3); margin-top: 3px; }
+
+.insight { padding: 10px 13px; border-radius: 8px; font-size: 12px; line-height: 1.65; border: .5px solid; margin-bottom: 7px; }
+.insight:last-child { margin-bottom: 0; }
+.insight.good { background: rgba(16,185,129,.06);  border-color: rgba(16,185,129,.22); color: var(--ok2); }
+.insight.warn { background: rgba(245,158,11,.06);  border-color: rgba(245,158,11,.22); color: var(--warn2); }
+.insight.crit { background: rgba(239,68,68,.06);   border-color: rgba(239,68,68,.22);  color: var(--danger2); }
+
+.transcript { display: flex; flex-direction: column; gap: 12px; }
+.tx-doc { align-self: flex-end; max-width: 78%; }
+.tx-pat { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: start; }
+.tx-who        { font-family: var(--mono); font-size: 10px; color: var(--t3); margin-bottom: 3px; }
+.tx-doc .tx-who { text-align: right; }
+.tx-bubble-doc { background: var(--accent); color: #fff; padding: 9px 13px; border-radius: 9px 2px 9px 9px; font-size: 13px; line-height: 1.5; }
+.tx-bubble-pat { background: var(--s2); border: .5px solid var(--b2); padding: 9px 13px; border-radius: 2px 9px 9px 9px; font-size: 13px; line-height: 1.5; color: var(--t1); }
+.tx-thought    { background: rgba(239,68,68,.07); border: .5px dashed rgba(239,68,68,.28); border-radius: 7px; padding: 7px 10px; font-size: 11px; color: #fca5a5; font-style: italic; line-height: 1.5; margin-top: 18px; }
+
+/* AR roadmap */
+.ar-roadmap {
+  background: linear-gradient(135deg, rgba(139,92,246,.08), rgba(59,130,246,.05));
+  border: .5px solid rgba(139,92,246,.2);
+  border-radius: var(--r); padding: 16px;
+}
+.ar-pill { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 9px; padding: 3px 10px; border-radius: 20px; background: rgba(139,92,246,.15); color: var(--purple2); border: .5px solid rgba(139,92,246,.3); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 10px; }
+.ar-title { font-size: 14px; font-weight: 600; margin-bottom: 5px; color: var(--t1); }
+.ar-desc  { font-size: 12px; color: var(--t2); line-height: 1.6; }
+.ar-features { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.ar-feat { font-size: 11px; padding: 4px 11px; border-radius: 20px; background: rgba(139,92,246,.08); border: .5px solid rgba(139,92,246,.18); color: var(--purple2); }
+
+.db-actions { display: flex; gap: 9px; }
+.btn-new {
+  flex: 1; background: transparent; border: .5px solid var(--b2); color: var(--t2);
+  padding: 12px; border-radius: 8px; font-family: var(--sans); font-size: 13px;
+  cursor: pointer; transition: all .15s;
+}
+.btn-new:hover  { border-color: var(--b3); color: var(--t1); }
+.btn-retry {
+  flex: 2; background: var(--ok); color: #020f07; font-weight: 700;
+  padding: 12px; border-radius: 8px; border: none;
+  font-family: var(--sans); font-size: 13px; cursor: pointer; transition: all .15s;
+}
+.btn-retry:hover { filter: brightness(1.08); }
+
+/* ── TOAST ── */
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(70px);
+  background: var(--s2); border: .5px solid var(--ok);
+  border-radius: 8px; padding: 9px 18px;
+  font-size: 12px; color: var(--ok2);
+  font-family: var(--mono); transition: transform .3s;
+  z-index: 300; white-space: nowrap;
+}
+#toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ── ANIMATIONS ── */
+@keyframes speakbar {
+  0%, 100% { height: 3px; opacity: .5; }
+  50%       { height: 15px; opacity: 1; }
+}
+
+/* ── INPUT BAR ── */
+#input-bar {
+  position: absolute;
+  bottom: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: min(600px, 88vw);
+  background: rgba(10,14,20,.92);
+  border: .5px solid rgba(59,130,246,.3);
+  border-radius: 14px;
+  padding: 8px 8px 8px 10px;
+  backdrop-filter: blur(12px);
+}
+#text-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--t1);
+  font-family: var(--sans);
+  font-size: 13px;
+  padding: 4px 0;
+  min-width: 0;
+}
+#text-input::placeholder { color: var(--t3); font-size: 12px; }
+#send-btn {
+  padding: 8px 16px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+#send-btn:hover { opacity: .85; }
+#mic-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(59,130,246,.1);
+  border: 1px solid rgba(59,130,246,.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all .2s;
+}
+#mic-btn:hover { background: rgba(59,130,246,.2); }
+#mic-btn.listening {
+  background: rgba(239,68,68,.2) !important;
+  border-color: rgba(239,68,68,.6) !important;
+  animation: mpulse 1s infinite;
+}
+#mic-btn.pat-speaking {
+  background: rgba(16,185,129,.12);
+  border-color: rgba(16,185,129,.4);
+}
+
+/* ── MIC LISTENING STATE ── */
+#mic-btn.listening{background:rgba(239,68,68,.2);border-color:rgba(239,68,68,.6);animation:mpulse 1s infinite}
+#mic-btn.pat-speaking{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.4)}
+#mic-btn.listening .mic-svg{fill:var(--danger2)}
+#mic-btn.pat-speaking .mic-svg{fill:var(--ok2)}
+
+/* ── WEBCAM + VISION ── */
+#webcam-wrap {
+  position: absolute;
+  bottom: 80px;
+  left: 16px;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+#webcam-preview {
+  width: 140px;
+  height: 105px;
+  border-radius: 8px;
+  border: 1px solid rgba(59,130,246,.35);
+  object-fit: cover;
+  background: #0a0e14;
+  display: block;
+}
+#webcam-status {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: #000;
+  font-weight: 600;
+  text-align: left;
+  background: rgba(255,255,255,.85);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+#vision-badge {
+  font-family: var(--mono);
+  font-size: 9px;
+  padding: 3px 7px;
+  border-radius: 4px;
+  background: rgba(255,255,255,.9);
+  border: .5px solid rgba(0,0,0,.2);
+  color: #000;
+  font-weight: 600;
+  max-width: 140px;
+  text-align: center;
+  display: none;
+}
+#rec-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+  display: inline-block;
+  animation: mpulse 1s infinite;
+  margin-right: 4px;
+  display: none;
+}
+.db-export-btn {
+  padding: 10px 20px;
+  background: rgba(16,185,129,.12);
+  border: .5px solid rgba(16,185,129,.35);
+  color: var(--ok2);
+  border-radius: 8px;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.db-export-btn:hover { background: rgba(16,185,129,.2); }
+
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ SCREEN 1 — CONFIG ═══════════════════ -->
+<div class="screen on" id="sc-config">
+  <div class="cfg-wrap">
+    <div class="logo-row">
+      <div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg></div>
+      <div class="logo-name">ClinicalVR</div>
+      <div class="logo-tag">v2.0 · Phase 1 of 2</div>
+    </div>
+    <div>
+      <div class="cfg-title">Configure patient parameters</div>
+      <div class="cfg-sub">Set the patient profile. The LLM generates a complete clinical agent from these parameters.</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Groq API Key</div>
+      <input class="api-input" type="password" id="groq-key" placeholder="gsk_... — free at console.groq.com">
+      <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+        <span style="font-family:var(--mono);font-size:10px;color:var(--t3);white-space:nowrap">Patient voice</span>
+        <select id="groq-voice" class="voice-select">
+          <option value="hannah">Hannah — F · young, warm</option>
+          <option value="diana">Diana — F · mature, professional</option>
+          <option value="autumn">Autumn — F · neutral, calm</option>
+          <option value="troy">Troy — M · young, conversational</option>
+          <option value="daniel">Daniel — M · mature, authoritative</option>
+          <option value="austin">Austin — M · young, energetic</option>
+        </select>
+      </div>
+      <div class="api-note">One key for LLM brain + TTS voice. Without a key, simulation mode runs automatically.</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Patient age range</div>
+      <div class="age-grid">
+        <div class="age-btn" data-age="child" onclick="pickAge(this)"><div class="name">Child</div><div class="range">5–12</div></div>
+        <div class="age-btn sel" data-age="teenager" onclick="pickAge(this)"><div class="name">Teenager</div><div class="range">13–19</div></div>
+        <div class="age-btn" data-age="adult" onclick="pickAge(this)"><div class="name">Adult</div><div class="range">20–59</div></div>
+        <div class="age-btn" data-age="elderly" onclick="pickAge(this)"><div class="name">Elderly</div><div class="range">60+</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-label">Psychological parameters</div>
+      <div class="slider-row"><div class="slider-label">Anger<span class="sv" id="sv-anger">4</span></div><div class="slider-track"><input type="range" id="sl-anger" min="1" max="10" value="4" oninput="updSlider(this,'sv-anger')"></div></div>
+      <div class="slider-row"><div class="slider-label">Anxiety<span class="sv" id="sv-anxiety">6</span></div><div class="slider-track"><input type="range" id="sl-anxiety" min="1" max="10" value="6" oninput="updSlider(this,'sv-anxiety')"></div></div>
+      <div class="slider-row"><div class="slider-label">Trust in doctors<span class="sv" id="sv-trust">3</span></div><div class="slider-track"><input type="range" id="sl-trust" min="1" max="10" value="3" oninput="updSlider(this,'sv-trust')"></div></div>
+      <div class="slider-row"><div class="slider-label">Openness<span class="sv" id="sv-open">3</span></div><div class="slider-track"><input type="range" id="sl-open" min="1" max="10" value="3" oninput="updSlider(this,'sv-open')"></div></div>
+      <div class="slider-row"><div class="slider-label">Comm. barrier<span class="sv" id="sv-barrier">5</span></div><div class="slider-track"><input type="range" id="sl-barrier" min="1" max="10" value="5" oninput="updSlider(this,'sv-barrier')"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Condition</div>
+      <div class="chip-grid">
+        <div class="chip sel" data-cond="anxiety" onclick="pickCond(this)">Anxiety</div>
+        <div class="chip" data-cond="depression" onclick="pickCond(this)">Depression</div>
+        <div class="chip" data-cond="trauma" onclick="pickCond(this)">Trauma</div>
+        <div class="chip" data-cond="substance" onclick="pickCond(this)">Substance use</div>
+        <div class="chip" data-cond="chronic-pain" onclick="pickCond(this)">Chronic pain</div>
+        <div class="chip" data-cond="eating-disorder" onclick="pickCond(this)">Eating disorder</div>
+        <div class="chip" data-cond="grief" onclick="pickCond(this)">Grief</div>
+        <div class="chip" data-cond="psychosis" onclick="pickCond(this)">Psychosis</div>
+      </div>
+    </div>
+    <button class="gen-btn" id="gen-btn" onclick="doGenerate()">Generate patient →</button>
+  </div>
+</div>
+
+<!-- ═══════════════════ SCREEN 2 — GENERATING ═══════════════════ -->
+<div class="screen" id="sc-gen">
+  <div class="gen-wrap">
+    <div class="gen-title">Generating patient agent</div>
+    <div class="gen-sub">Building clinical mystery from trainer parameters...</div>
+    <div class="gen-log" id="gen-log"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════ SCREEN 3 — PROFILE ═══════════════════ -->
+<div class="screen" id="sc-profile">
+  <div class="prof-wrap">
+    <div class="prof-header">
+      <div class="prof-av" id="prof-av">?</div>
+      <div>
+        <div class="prof-name" id="prof-name">—</div>
+        <div class="prof-meta" id="prof-meta">—</div>
+        <div class="prof-params" id="prof-params"></div>
+      </div>
+    </div>
+    <div class="prof-section">
+      <div class="prof-label">Presenting complaint</div>
+      <div class="prof-val" id="prof-presenting">—</div>
+    </div>
+    <div class="prof-section" style="background:rgba(239,68,68,.04);border-color:rgba(239,68,68,.15)">
+      <div class="prof-label" style="color:var(--danger2)">Real problem — hidden from doctor</div>
+      <div class="prof-val" id="prof-real">—</div>
+    </div>
+    <div class="prof-section">
+      <div class="prof-label">Secretly wants</div>
+      <div class="prof-val" id="prof-wants">—</div>
+    </div>
+    <div class="prof-section">
+      <div class="prof-label">Secretly fears</div>
+      <div class="prof-val" id="prof-fears">—</div>
+    </div>
+    <div class="prof-section">
+      <div class="prof-label">Backstory</div>
+      <div class="prof-val" id="prof-backstory">—</div>
+    </div>
+    <div class="prof-section">
+      <div class="prof-label">Triggers</div>
+      <div id="prof-triggers"></div>
+    </div>
+    <div class="prof-actions">
+      <button class="btn-regen" onclick="showScreen('sc-config')">↺ Reconfigure</button>
+      <button class="btn-enter" onclick="doEnterSession()">Enter consultation room →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ SCREEN 4 — SESSION ═══════════════════ -->
+<div class="screen" id="sc-session">
+  <canvas id="three-canvas"></canvas>
+
+  <div id="vr-status"><div class="vr-dot" id="vr-dot"></div><span id="vr-txt">Ready</span></div>
+  <div id="live-fb"></div>
+
+  <div id="hud-tl">
+    <div class="hud-card">
+      <div class="hc-label" id="hc-name">—</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
+        <div class="hc-bar" style="flex:1"><div class="hc-fill" id="hc-trust-fill" style="width:0%;background:var(--danger)"></div></div>
+        <div class="hc-val" id="hc-trust-pct" style="font-size:12px">0%</div>
+      </div>
+      <div class="hc-state" id="hc-state" style="color:var(--danger2)">guarded</div>
+    </div>
+    <div class="hud-card" style="max-width:200px">
+      <div class="hc-label">Body tension</div>
+      <div class="hc-bar"><div class="hc-fill" id="hc-tension-fill" style="width:85%;background:var(--danger)"></div></div>
+    </div>
+  </div>
+
+  <div id="hud-tr">
+    <button class="vr-btn" onclick="doGoToConfig()">← Exit</button>
+    <button class="vr-btn green" onclick="doEndSession()">End → Debrief</button>
+    <div class="hud-card" style="text-align:right;min-width:80px">
+      <div class="hc-label">Exchanges</div>
+      <div class="hc-val" id="hc-xcount">0</div>
+    </div>
+  </div>
+
+  <div id="hud-thought">
+    <div class="ht-label">Inner monologue</div>
+    <div id="thought-items"><div style="font-family:var(--mono);font-size:10px;color:rgba(61,79,99,.7)">thoughts appear here...</div></div>
+  </div>
+
+  <div id="pat-sub"></div>
+  <div id="doc-trans"></div>
+
+  <div id="hud-mystery">
+    <div class="mystery-inner">
+      <div class="my-label">Clinical mystery</div>
+      <div class="my-row"><div class="my-key">Presenting</div><div class="my-val" id="my-presenting">—</div></div>
+      <div class="my-row"><div class="my-key">Real problem <span id="my-badge"></span></div><div class="my-locked" id="my-real">hidden</div></div>
+      <div class="my-row"><div class="my-key">Wants</div><div class="my-locked" id="my-wants">—</div></div>
+    </div>
+    <div class="my-xcount"><span id="my-xcount">0 exchanges</span></div>
+  </div>
+
+
+  <!-- Webcam capture + vision analysis -->
+  <div id="webcam-wrap">
+    <span id="rec-dot"></span>
+    <video id="webcam-preview" autoplay muted playsinline></video>
+    <div id="webcam-status">camera off</div>
+    <div id="vision-badge">—</div>
+  </div>
+
+  <div id="mic-hint">tap mic to speak</div>
+  <div id="mic-btn" onclick="toggleMic()">
+    <svg class="mic-svg" viewBox="0 0 24 24">
+      <path d="M12 1a4 4 0 0 1 4 4v6a4 4 0 0 1-8 0V5a4 4 0 0 1 4-4zm-7 10a7 7 0 0 0 14 0h-2a5 5 0 0 1-10 0H5zm7 9v-2a7 7 0 0 0 7-7h-2a5 5 0 0 1-10 0H5a7 7 0 0 0 7 7v2zm-1 2h2v-1h-2v1z"/>
+    </svg>
+  </div>
+</div>
+
+<!-- ═══════════════════ SCREEN 5 — DEBRIEF ═══════════════════ -->
+<div class="screen" id="sc-debrief">
+  <div class="db-wrap">
+    <div class="db-header">
+      <div class="db-title-col">
+        <div class="db-eyebrow">Post-session debrief</div>
+        <div class="db-title" id="db-title">Session</div>
+      </div>
+      <div class="db-score-col">
+        <div class="db-score" id="db-score">—</div>
+        <div class="db-score-label">Overall score</div>
+      </div>
+    </div>
+    <div class="db-stats">
+      <div class="db-stat"><div class="ds-val" id="db-exch">0</div><div class="ds-lbl">Exchanges</div></div>
+      <div class="db-stat"><div class="ds-val" id="db-trust">0%</div><div class="ds-lbl">Trust reached</div></div>
+      <div class="db-stat"><div class="ds-val" id="db-disclosed">✗ No</div><div class="ds-lbl">Real problem disclosed</div></div>
+    </div>
+    <div class="db-section">
+      <div class="db-sec-head">Communication skills</div>
+      <div id="db-skills"></div>
+    </div>
+    <div class="db-section">
+      <div class="db-sec-head">Insights — what to improve</div>
+      <div id="db-insights"></div>
+    </div>
+    <div class="db-section">
+      <div class="db-sec-head">Full transcript + inner monologue revealed</div>
+      <div class="transcript" id="db-transcript"></div>
+    </div>
+    <div class="db-actions">
+      <button class="db-export-btn" onclick="exportSession()">⬇ Export session JSON + video</button>
+      <button class="btn-new" onclick="showScreen('sc-config')">New patient</button>
+      <button class="btn-retry" onclick="doRetrySession()">Retry same patient →</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+'use strict';
+
+var recognition = null;
+var isListening = false;
+
+// ── MIC STATE ──
+/* ══ config.js ══ */
+/**
+ * config.js
+ * Trainer parameter panel — age selection, sliders, condition chips
+ * Exports: getParams(), showScreen()
+ */
+
+'use strict';
+
+// ── MIC STATE ──
+// ── STATE ──
+let selectedAge  = 'teenager';
+let selectedCond = 'anxiety';
+
+// ── AGE SELECTION ──
+function pickAge(el) {
+  document.querySelectorAll('.age-btn').forEach(b => b.classList.remove('sel'));
+  el.classList.add('sel');
+  selectedAge = el.dataset.age;
+}
+
+// ── CONDITION SELECTION ──
+function pickCond(el) {
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('sel'));
+  el.classList.add('sel');
+  selectedCond = el.dataset.cond;
+}
+
+// ── SLIDER LIVE UPDATE ──
+function updSlider(el, valId) {
+  document.getElementById(valId).textContent = el.value;
+}
+
+// ── COLLECT ALL PARAMS ──
+function getParams() {
+  return {
+    age:       selectedAge,
+    anger:     document.getElementById('sl-anger').value,
+    anxiety:   document.getElementById('sl-anxiety').value,
+    trust:     document.getElementById('sl-trust').value,
+    openness:  document.getElementById('sl-open').value,
+    barrier:   document.getElementById('sl-barrier').value,
+    condition: selectedCond,
+  };
+}
+
+// ── SCREEN SWITCHER ──
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+}
+
+// ── TOAST ──
+function showToast(msg, color = 'var(--ok2)') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.color = color;
+  t.style.borderColor = color;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+// ── ESC ──
+function esc(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+/* ══ generation.js ══ */
+/**
+ * generation.js
+ * LLM patient generation via Groq llama-3.3-70b
+ * Exports: generatePatient(), renderProfile(), groqLLM()
+ */
+
+'use strict';
+
+// ── MIC STATE ──
+// ── AGE BANDS ──
+const AGEBANDS = {
+  child:    { label: 'child',    range: '5-12',  ctx: 'primary school student' },
+  teenager: { label: 'teenager', range: '13-19', ctx: 'secondary school student' },
+  adult:    { label: 'adult',    range: '20-59', ctx: 'working adult' },
+  elderly:  { label: 'elderly',  range: '60-85', ctx: 'retired person' },
+};
+
+// ── FALLBACK PATIENTS (no API key) ──
+const FALLBACKS = {
+  teenager: {
+    name: 'Alex', age: 17, gender: 'non-binary', occupation: 'Year 12 student',
+    presenting: "I've been having trouble sleeping and feel stressed about exams.",
+    real_problem: 'Has been self-harming for 3 months. Terrified of being reported to parents.',
+    backstory: 'Parents divorced last year. Previous counsellor broke confidentiality. Father reacted badly.',
+    wants: 'Help without parents being told.',
+    fears: 'Being hospitalised or losing control.',
+    triggers: ['Mentioning parents', 'Advice given too fast', 'Being interrupted', 'Clinical jargon'],
+    spoken_style: 'brief and defensive',
+    thought_tone: 'cynical and resigned',
+  },
+  child: {
+    name: 'Jamie', age: 9, gender: 'male', occupation: 'Year 4 student',
+    presenting: 'I keep getting tummy aches before school.',
+    real_problem: 'Being bullied at school for months. Too scared to tell parents who are separating.',
+    backstory: 'Parents separating. Blames himself. Scared telling adults makes things worse.',
+    wants: 'Someone to say none of it is his fault.',
+    fears: 'Getting bullies in trouble.',
+    triggers: ['Mentioning parents', 'Asking about friends', 'Rushing'],
+    spoken_style: 'brief and defensive',
+    thought_tone: 'fearful and hypervigilant',
+  },
+  adult: {
+    name: 'Marcus', age: 38, gender: 'male', occupation: 'Secondary school teacher',
+    presenting: "I've been having headaches and feeling run down.",
+    real_problem: 'Drinking heavily every night to cope with burnout and a crumbling marriage.',
+    backstory: '14 years teaching. School leadership toxic. Wife issued ultimatum 3 weeks ago.',
+    wants: 'Permission to admit he is not coping.',
+    fears: 'Losing job, marriage and identity.',
+    triggers: ['Asking about drinking', 'Mentioning family', 'Suggesting stress leave'],
+    spoken_style: 'polite but evasive',
+    thought_tone: 'conflicted and torn',
+  },
+  elderly: {
+    name: 'Margaret', age: 74, gender: 'female', occupation: 'Retired librarian',
+    presenting: 'My knee has been bothering me more than usual.',
+    real_problem: 'Increasingly confused and forgetting things. Hiding it to keep independence.',
+    backstory: 'Widowed 2 years ago. Watched husband lose independence to dementia.',
+    wants: 'Reassurance she can still live independently.',
+    fears: 'Being put in a care home.',
+    triggers: ['Asking about memory', 'Mentioning family', 'Suggesting tests', 'Rushing'],
+    spoken_style: 'polite but evasive',
+    thought_tone: 'fearful and hypervigilant',
+  },
+};
+
+// ── GROQ API ──
+async function groqLLM(messages, system, temp = 0.85) {
+  const key = document.getElementById('groq-key').value.trim();
+  if (!key) throw new Error('no_key');
+
+  const body = {
+    model: 'llama-3.3-70b-versatile',
+    messages: system
+      ? [{ role: 'system', content: system }, ...messages]
+      : messages,
+    temperature: temp,
+    max_tokens: 900,
+  };
+
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + key,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) throw new Error('groq_' + res.status);
+  const data = await res.json();
+  return data.choices[0].message.content.trim();
+}
+
+// ── BUILD GENERATION PROMPT ──
+function buildGenPrompt(p) {
+  const a = AGEBANDS[p.age] || AGEBANDS.teenager;
+  const angerDesc   = p.anger >= 8  ? 'very angry and hostile'      : p.anger >= 5  ? 'noticeably irritable'    : 'mostly calm but tense';
+  const anxietyDesc = p.anxiety >= 8 ? 'severely anxious'           : p.anxiety >= 5 ? 'moderately anxious'      : 'mildly anxious';
+  const trustDesc   = p.trust <= 3   ? 'deeply distrustful'         : p.trust <= 6   ? 'cautious and uncertain'  : 'somewhat willing to trust';
+  const openDesc    = p.openness <= 3 ? 'very closed off'           : 'somewhat guarded but can open up';
+  const barrierDesc = p.barrier >= 7  ? 'significant communication barriers — avoids direct answers' : 'moderate difficulty expressing themselves';
+
+  return `You are a clinical medical education expert. Generate a realistic patient profile for a doctor training simulation.
+
+PARAMETERS SET BY TRAINER:
+- Age range: ${a.label} (${a.range} years), specifically a ${a.ctx}
+- Anger level: ${p.anger}/10 — ${angerDesc}
+- Anxiety level: ${p.anxiety}/10 — ${anxietyDesc}
+- Trust in doctors: ${p.trust}/10 — ${trustDesc}
+- Openness: ${p.openness}/10 — ${openDesc}
+- Communication barrier: ${p.barrier}/10 — ${barrierDesc}
+- Condition: ${p.condition}
+
+CRITICAL: The PRESENTING COMPLAINT must be vague or minor. The REAL PROBLEM (related to ${p.condition}) must be meaningfully more serious or sensitive. The gap between them IS the training challenge.
+
+Return ONLY valid JSON — no markdown, no explanation:
+{
+  "name": "realistic first name",
+  "age": integer in ${a.range},
+  "gender": "male or female or non-binary",
+  "occupation": "specific role",
+  "presenting": "vague presenting complaint — 1 sentence, first person",
+  "real_problem": "the actual hidden issue related to ${p.condition}",
+  "backstory": "2-3 sentences explaining WHY they hide — shaped by the anger/trust/anxiety levels",
+  "wants": "what they secretly hope to get",
+  "fears": "what they are most afraid will happen if they tell the truth",
+  "triggers": ["4-6 specific things the doctor might say or do that cause withdrawal"],
+  "spoken_style": "style reflecting anger=${p.anger} anxiety=${p.anxiety} trust=${p.trust}",
+  "thought_tone": "inner thought tone reflecting these parameters"
+}`;
+}
+
+// ── GENERATE PATIENT ──
+const GEN_STEPS = [
+  'reading trainer parameters...',
+  'generating patient identity...',
+  'building clinical mystery...',
+  'constructing backstory...',
+  'calibrating emotional parameters...',
+  'finalising patient agent...',
+  'done.',
+];
+
+async function generatePatient() {
+  document.getElementById('gen-btn').disabled = true;
+  document.getElementById('gen-log').innerHTML = '';
+  showScreen('sc-gen');
+
+  const params = getParams();
+
+  // Live log animation
+  let step = 0;
+  const logEl = document.getElementById('gen-log');
+  const logTimer = setInterval(() => {
+    if (step < GEN_STEPS.length - 1) {
+      const d = document.createElement('div');
+      d.className = 'gl' + (step > 0 ? ' dim' : '');
+      d.textContent = '> ' + GEN_STEPS[step++];
+      logEl.appendChild(d);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+  }, 520);
+
+  try {
+    const key = document.getElementById('groq-key').value.trim();
+    let raw;
+
+    if (key) {
+      raw = await groqLLM([{ role: 'user', content: buildGenPrompt(params) }], null, 0.9);
+    } else {
+      await new Promise(r => setTimeout(r, 3400));
+      raw = JSON.stringify(FALLBACKS[params.age] || FALLBACKS.teenager);
+    }
+
+    clearInterval(logTimer);
+    const done = document.createElement('div');
+    done.className = 'gl'; done.textContent = '> patient agent ready.';
+    logEl.appendChild(done);
+
+    const patient = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    patient._params = params;
+
+    await new Promise(r => setTimeout(r, 500));
+    renderProfile(patient);
+    showScreen('sc-profile');
+    return patient;
+
+  } catch (err) {
+    clearInterval(logTimer);
+    const errEl = document.createElement('div');
+    errEl.className = 'gl dim'; errEl.textContent = '> error — using simulation patient';
+    logEl.appendChild(errEl);
+    await new Promise(r => setTimeout(r, 1000));
+    const patient = { ...(FALLBACKS[params.age] || FALLBACKS.teenager), _params: params };
+    renderProfile(patient);
+    showScreen('sc-profile');
+    return patient;
+
+  } finally {
+    document.getElementById('gen-btn').disabled = false;
+  }
+}
+
+// ── RENDER PROFILE ──
+function renderProfile(patient) {
+  const params = patient._params || {};
+
+  // Avatar initials + colour by anger
+  const av = document.getElementById('prof-av');
+  av.textContent = patient.name[0].toUpperCase();
+  const anger = parseInt(params.anger || 5);
+  av.style.background = anger >= 7 ? 'rgba(239,68,68,.2)' : anger >= 4 ? 'rgba(245,158,11,.15)' : 'rgba(16,185,129,.15)';
+  av.style.borderColor = anger >= 7 ? 'rgba(239,68,68,.4)'  : anger >= 4 ? 'rgba(245,158,11,.3)'  : 'rgba(16,185,129,.3)';
+
+  document.getElementById('prof-name').textContent = patient.name;
+  document.getElementById('prof-meta').textContent = patient.age + ' · ' + patient.gender + ' · ' + patient.occupation;
+  document.getElementById('prof-presenting').textContent = patient.presenting;
+  document.getElementById('prof-real').textContent       = patient.real_problem;
+  document.getElementById('prof-wants').textContent      = patient.wants;
+  document.getElementById('prof-fears').textContent      = patient.fears;
+  document.getElementById('prof-backstory').textContent  = patient.backstory;
+
+  // Parameter chips
+  const pc = document.getElementById('prof-params');
+  pc.innerHTML = '';
+  [
+    { label: 'Anger '   + params.anger   + '/10', cls: params.anger   >= 7 ? 'high' : params.anger   >= 4 ? 'med' : 'low' },
+    { label: 'Anxiety ' + params.anxiety + '/10', cls: params.anxiety >= 7 ? 'high' : params.anxiety >= 4 ? 'med' : 'low' },
+    { label: 'Trust '   + params.trust   + '/10', cls: params.trust   <= 3 ? 'high' : params.trust   <= 6 ? 'med' : 'low' },
+    { label: params.condition, cls: 'cond' },
+  ].forEach(({ label, cls }) => {
+    const s = document.createElement('span');
+    s.className = 'param-chip ' + cls;
+    s.textContent = label;
+    pc.appendChild(s);
+  });
+
+  // Triggers
+  const tr = document.getElementById('prof-triggers');
+  tr.innerHTML = '';
+  (patient.triggers || []).forEach(t => {
+    const s = document.createElement('span');
+    s.className = 'trig';
+    s.textContent = t;
+    tr.appendChild(s);
+  });
+}
+
+/* ══ avatar.js ══ */
+/**
+ * avatar.js
+ * Three.js consultation room + patient avatar
+ * Improved lighting, realistic environment, animated avatar
+ */
+
+'use strict';
+
+// ── MIC STATE ──
+// ── GLOBALS ──
+let renderer, scene, camera, animId;
+let clock3 = 0;
+let P = {};          // avatar part references
+let patHead = null;
+let patMouth = null;
+
+// Avatar animation state
+let avatarState  = { posture: 0, tension: 0.9, gazeTarget: 'away', breathRate: 1.4, headTilt: -0.2 };
+let targetState  = { ...avatarState };
+
+// Micro-animations
+let flinchOn = false, flinchT = 0;
+let nodOn    = false, nodT    = 0;
+let shiftOn  = false, shiftT  = 0;
+
+// ── APPLY BODY STATE FROM LLM ──
+function applyBodyState(bs) {
+  if (bs.posture    != null) targetState.posture    = bs.posture;
+  if (bs.tension    != null) targetState.tension    = bs.tension;
+  if (bs.gazeDir)            targetState.gazeTarget = bs.gazeDir;
+  if (bs.breathRate != null) targetState.breathRate = bs.breathRate;
+  if (bs.headTilt   != null) targetState.headTilt   = bs.headTilt;
+  if (bs.microAnim === 'flinch') { flinchOn = true; flinchT = 0; }
+  if (bs.microAnim === 'nod')    { nodOn    = true; nodT    = 0; }
+  if (bs.microAnim === 'shift')  { shiftOn  = true; shiftT  = 0; }
+}
+
+// ── INIT ──
+function initThree(patient) {
+  if (animId) cancelAnimationFrame(animId);
+  P = {}; patHead = null; patMouth = null;
+
+  // Reset state
+  avatarState = { posture: 0, tension: 0.9, gazeTarget: 'away', breathRate: 1.4, headTilt: -0.2 };
+  targetState = { ...avatarState };
+
+  const canvas = document.getElementById('three-canvas');
+  const W = canvas.clientWidth, H = canvas.clientHeight;
+
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+  renderer.setSize(W, H);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
+  renderer.toneMapping          = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure  = 1.15;
+  renderer.setClearColor(0x0e1420);
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0e1420);
+  scene.fog = new THREE.FogExp2(0x0e1420, 0.032);
+
+  // First-person camera — doctor's seated eye level, looking at patient
+  camera = new THREE.PerspectiveCamera(54, W / H, 0.05, 40);
+  camera.position.set(0, 1.55, 1.6);
+  camera.lookAt(0, 1.55, 0);
+
+  buildLighting();
+  buildRoom();
+  buildFurniture();
+  buildPatientAvatar(patient);
+
+  vrLoop();
+}
+
+// ── LIGHTS — warm clinical room ──
+function buildLighting() {
+  // Broad ambient — room never fully dark
+  scene.add(new THREE.AmbientLight(0xfff8f0, 0.55));
+
+  // Primary key light — front left high, illuminates face
+  const key = new THREE.DirectionalLight(0xfffbf0, 1.2);
+  key.position.set(-1.5, 4.5, 3);
+  key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.bias = -0.001;
+  key.shadow.camera.left   = -5;
+  key.shadow.camera.right  =  5;
+  key.shadow.camera.top    =  6;
+  key.shadow.camera.bottom = -4;
+  scene.add(key);
+
+  // Warm fill — right side, softer
+  const fill = new THREE.DirectionalLight(0xffe8d0, 0.45);
+  fill.position.set(3, 3, 2);
+  scene.add(fill);
+
+  // Cool rim from behind — separates avatar from background
+  const rim = new THREE.DirectionalLight(0xaac8ff, 0.28);
+  rim.position.set(0, 5, -4);
+  scene.add(rim);
+
+  // Ceiling fluorescent — overhead
+  const ceil = new THREE.PointLight(0xfff5e8, 0.7, 10);
+  ceil.position.set(0, 5.5, 0.5);
+  scene.add(ceil);
+
+  // Window bounce light — left wall
+  const winBounce = new THREE.PointLight(0xd0e8ff, 0.35, 8);
+  winBounce.position.set(-4.5, 3.5, 1);
+  scene.add(winBounce);
+
+  // Desk lamp — warm focused on patient area
+  const desk = new THREE.SpotLight(0xfff0cc, 0.9, 7, Math.PI / 6, 0.5);
+  desk.position.set(0.5, 3, 1.8);
+  desk.target.position.set(0, 1.4, 0);
+  scene.add(desk);
+  scene.add(desk.target);
+}
+
+// ── ROOM ──
+function buildRoom() {
+  const floorMat = new THREE.MeshStandardMaterial({ color: 0xb8b2a6, roughness: 0.92 });
+  const wallMat  = new THREE.MeshStandardMaterial({ color: 0xe2ddd8, roughness: 0.95 });
+  const ceilMat  = new THREE.MeshStandardMaterial({ color: 0xedece8, roughness: 0.98 });
+
+  // Floor with subtle variation
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(16, 14), floorMat);
+  floor.rotation.x = -Math.PI / 2;
+  floor.receiveShadow = true;
+  scene.add(floor);
+
+  // Walls
+  [
+    { geo: [16, 7], pos: [0, 3.5, -7], rot: [0, 0, 0] },         // back
+    { geo: [14, 7], pos: [-8, 3.5, 0], rot: [0, Math.PI/2, 0] }, // left
+    { geo: [14, 7], pos: [ 8, 3.5, 0], rot: [0,-Math.PI/2, 0] }, // right
+  ].forEach(({ geo, pos, rot }) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(...geo), wallMat);
+    m.position.set(...pos);
+    m.rotation.set(...rot);
+    m.receiveShadow = true;
+    scene.add(m);
+  });
+
+  // Ceiling
+  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(16, 14), ceilMat);
+  ceil.rotation.x = Math.PI / 2;
+  ceil.position.y = 7;
+  scene.add(ceil);
+
+  // Teal clinical accent strip on back wall
+  addBox(11, 0.28, 0.06, 0x1a7a68, [0, 4.1, -6.97]);
+
+  // Skirting board
+  addBox(16, 0.1, 0.07, 0xccc5b6, [0, 0.05, -7]);
+  addBox(14, 0.1, 0.07, 0xccc5b6, [-7.96, 0.05, 0], [0, Math.PI/2, 0]);
+
+  // Window — left wall
+  addBox(2.5, 2.1, 0.12, 0xa4a09a, [-7.94, 3.5, 1.5]);
+  const glass = new THREE.Mesh(
+    new THREE.PlaneGeometry(2.08, 1.82),
+    new THREE.MeshStandardMaterial({ color: 0xa8c4e0, transparent: true, opacity: 0.3, roughness: 0.05 })
+  );
+  glass.position.set(-7.97, 3.5, 1.5);
+  glass.rotation.y = Math.PI / 2;
+  scene.add(glass);
+  // Window frame dividers
+  addBox(0.055, 1.82, 0.04, 0x888080, [-7.96, 3.5, 1.5]);
+  addBox(2.08, 0.055, 0.04, 0x888080, [-7.96, 3.5, 1.5]);
+  // Window light patch on floor
+  const patch = new THREE.Mesh(
+    new THREE.PlaneGeometry(2, 2.5),
+    new THREE.MeshStandardMaterial({ color: 0xfff5cc, transparent: true, opacity: 0.12 })
+  );
+  patch.rotation.x = -Math.PI / 2;
+  patch.position.set(-5.5, 0.01, 1.5);
+  scene.add(patch);
+
+  // Ceiling light fixture
+  addBox(0.9, 0.08, 0.9, 0xd8d4ce, [0, 6.97, 0.5]);
+  addBox(0.72, 0.03, 0.72, 0xf5f5f0, [0, 6.94, 0.5]);
+
+  // Wall art — framed print right side
+  addBox(1.4, 0.025, 1.0, 0x7a6855, [5.5, 3.9, -6.97]);
+  addBox(1.2, 0.015, 0.82, 0xc8cfb4, [5.5, 3.9, -6.96]);
+
+  // Clock
+  addCyl(0.25, 0.25, 0.05, 0xf0ebe0, [0, 5.4, -6.97]);
+  addCyl(0.21, 0.21, 0.04, 0xfafaf5, [0, 5.4, -6.94]);
+  addBox(0.02, 0.16, 0.04, 0x333333, [0, 5.4, -6.91]);
+  addBox(0.02, 0.11, 0.04, 0x333333, [0, 5.4, -6.91], [0, 0, 0.5]);
+}
+
+// ── FURNITURE ──
+function buildFurniture() {
+  // Desk — rich walnut
+  addBox(2.0, 0.08, 0.9, 0xa07040, [0, 0.9, 0]);
+  addBox(2.04, 0.035, 0.06, 0x907038, [0, 0.87, -0.45]); // front edge detail
+  [[-0.84, -0.36], [0.84, -0.36], [-0.84, 0.36], [0.84, 0.36]].forEach(([x, z]) =>
+    addBox(0.075, 0.9, 0.075, 0x866035, [x, 0.45, z])
+  );
+
+  // Desk items
+  addBox(0.44, 0.018, 0.3,  0xf4f0e6, [-0.38, 0.93, 0.1]);  // paper
+  addBox(0.06, 0.15,  0.06, 0x2a3870, [-0.62, 0.94, -0.1]); // pen holder
+  // Monitor
+  addBox(0.6, 0.055, 0.3, 0x222222, [0.5, 0.95, -0.25]);
+  addCyl(0.04, 0.04, 0.33, 0x1a1a1a, [0.5, 1.12, -0.27]);
+  addBox(0.75, 0.48, 0.048, 0x141414, [0.5, 1.22, -0.31]);
+  const screenMat = new THREE.MeshStandardMaterial({ color: 0x172448, emissive: 0x091428, emissiveIntensity: 0.6, roughness: 0.15 });
+  const screen = new THREE.Mesh(new THREE.BoxGeometry(0.67, 0.42, 0.02), screenMat);
+  screen.position.set(0.5, 1.22, -0.29); scene.add(screen);
+  addBox(0.54, 0.018, 0.19, 0xcccccc, [0.5, 0.92, 0.07]); // keyboard
+  addSph(0.044, 0xcccccc, [0.82, 0.925, 0.07]); // mouse
+  addBox(0.22, 0.14, 0.16, 0x2c3870, [-0.2, 0.96, -0.24]); // BP monitor
+
+  // Doctor chair — ergonomic blue
+  addBox(0.58, 0.085, 0.58, 0x1a3060, [2.1, 0.62, -0.2]);
+  addBox(0.58, 0.62,  0.085, 0x1a3060, [2.1, 0.95, -0.51]);
+  addBox(0.13, 0.055, 0.5,  0x1a3060, [1.88, 0.77, -0.2]);
+  addBox(0.13, 0.055, 0.5,  0x1a3060, [2.42, 0.77, -0.2]);
+  addCyl(0.05, 0.05, 0.62, 0x888888, [2.1, 0.31, -0.2]);
+  [0, 72, 144, 216, 288].forEach(a => {
+    const r = a * Math.PI / 180;
+    addBox(0.4, 0.028, 0.06, 0x666666, [2.1 + Math.cos(r) * 0.2, 0.028, -0.2 + Math.sin(r) * 0.2], [0, r, 0]);
+  });
+
+  // Patient chair — green fabric, centred at x=0
+  addBox(0.58, 0.085, 0.58, 0x3a5830, [0, 0.62, 0.22]);
+  addBox(0.58, 0.62,  0.085, 0x3a5830, [0, 0.91, -0.09]);
+  addBox(0.13, 0.055, 0.5,  0x3a5830, [ 0.25, 0.77, 0.22]);
+  addBox(0.13, 0.055, 0.5,  0x3a5830, [-0.25, 0.77, 0.22]);
+  addCyl(0.05, 0.05, 0.62, 0x888888, [0, 0.31, 0.22]);
+  [0, 72, 144, 216, 288].forEach(a => {
+    const r = a * Math.PI / 180;
+    addBox(0.4, 0.028, 0.06, 0x666666, [Math.cos(r) * 0.2, 0.028, 0.22 + Math.sin(r) * 0.2], [0, r, 0]);
+  });
+
+  // Medical cabinet
+  addBox(0.7, 1.82, 0.48, 0xd2cdc4, [7.55, 0.91, -3]);
+  addBox(0.66, 0.01, 0.44, 0xc8c4bc, [7.55, 1.82, -3]);
+  addBox(0.32, 0.86, 0.04, 0xe0d9d0, [7.42, 1.06, -2.77]);
+  addBox(0.32, 0.86, 0.04, 0xe0d9d0, [7.68, 1.06, -2.77]);
+
+  // IV stand
+  addCyl(0.025, 0.025, 2.0, 0xaaaaaa, [-4.2, 1.0, 0.9]);
+  addBox(0.4, 0.03, 0.055, 0x999999, [-4.2, 2.0, 0.9]);
+  const ivMat = new THREE.MeshStandardMaterial({ color: 0x80c8a0, transparent: true, opacity: 0.6 });
+  const ivBag = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.27, 0.05), ivMat);
+  ivBag.position.set(-4.2, 1.87, 0.9); scene.add(ivBag);
+
+  // Instrument tray
+  addBox(0.58, 0.04, 0.4, 0xcccccc, [-1.3, 0.9, 1.3]);
+  addCyl(0.032, 0.032, 0.9, 0xbbbbbb, [-1.3, 0.45, 1.3]);
+
+  // Plant
+  addCyl(0.1, 0.12, 0.2, 0x7a4e2c, [6.6, 0.1, -5.2]);
+  addSph(0.27, 0x286840, [6.6, 0.50, -5.2]);
+  addSph(0.18, 0x389050, [6.38, 0.60, -5.2]);
+  addSph(0.16, 0x1f7038, [6.82, 0.58, -5.2]);
+}
+
+// ── PATIENT AVATAR ── realistic seated human
+function buildPatientAvatar(patient) {
+  // Load GLTFLoader from CDN
+  if (typeof THREE.GLTFLoader === 'undefined') {
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js';
+    s.onload = function() { loadGLB(patient); };
+    document.head.appendChild(s);
+  } else {
+    loadGLB(patient);
+  }
+}
+
+function loadGLB(patient) {
+  var loader = new THREE.GLTFLoader();
+  loader.load(
+    'character.glb',
+    function(gltf) {
+      var model = gltf.scene;
+
+      // Log what we got for debugging
+      console.log('[ClinicalVR] GLB loaded. Animations:', gltf.animations.length);
+      var box = new THREE.Box3().setFromObject(model);
+      var size = new THREE.Vector3();
+      box.getSize(size);
+      console.log('[ClinicalVR] Model size:', size);
+
+      // Force correct scale — model height is 0.002 units
+      // Target 1.65m tall standing figure
+      var targetHeight = 1.65;
+      var currentHeight = size.y;
+      // Direct ratio — no unit guessing
+      var scaleF = targetHeight / currentHeight;
+      console.log('[ClinicalVR] Scale factor:', scaleF, '| Original height:', currentHeight);
+      model.scale.set(scaleF, scaleF, scaleF);
+
+      // Recompute bounds after scale
+      var box2 = new THREE.Box3().setFromObject(model);
+      var center = new THREE.Vector3();
+      box2.getCenter(center);
+      var minY = box2.min.y;
+
+      // The model's internal geometry is offset — compensate directly
+      // Place so bounding box center aligns with scene origin X/Z
+      // and bottom of model sits on floor (y=0)
+      model.position.x = -center.x;
+      model.position.y = -minY;
+      model.position.z = -center.z;
+
+      model.rotation.y = Math.PI;
+
+      // Verify after positioning
+      var box3 = new THREE.Box3().setFromObject(model);
+      var c2 = new THREE.Vector3();
+      box3.getCenter(c2);
+      console.log('[ClinicalVR] Final center after placement:', c2);
+      console.log('[ClinicalVR] Model placed at:', model.position);
+
+      // Shadows on all meshes
+      model.traverse(function(child) {
+        if (child.isMesh) {
+          child.castShadow    = true;
+          child.receiveShadow = true;
+        }
+      });
+
+      scene.add(model);
+      P.model = model;
+
+      // Find key bones for animation
+      model.traverse(function(child) {
+        var n = child.name.toLowerCase();
+        if (n === 'head' || n === 'mixamorighead')          { P.head  = child; patHead = child; }
+        if (n === 'neck' || n === 'mixamorigneck')          { P.neck  = child; }
+        if (n === 'spine' || n === 'mixamorighips')         { P.root  = child; }
+        if (n === 'leftshoulder'  || n === 'mixamorigleftshoulder')  { P.sL = child; }
+        if (n === 'rightshoulder' || n === 'mixamorigrightshoulder') { P.sR = child; }
+        if (n === 'leftarm'  || n === 'mixamorigleftarm')   { P.aL = child; }
+        if (n === 'rightarm' || n === 'mixamorigrightarm')  { P.aR = child; }
+        if (n === 'leftupleg'  || n === 'mixamorigleftupleg')  { P.lL = child; }
+        if (n === 'rightupleg' || n === 'mixamorigrightupleg') { P.lR = child; }
+        if (n === 'lefteye'  || n === 'mixamoriglefteye')   { P.eL = child; }
+        if (n === 'righteye' || n === 'mixamorigrighteye')  { P.eR = child; }
+      });
+
+      // Mixamo idle animation
+      if (gltf.animations && gltf.animations.length > 0) {
+        P.mixer = new THREE.AnimationMixer(model);
+        var idle = gltf.animations[0];
+        var action = P.mixer.clipAction(idle);
+        action.play();
+      }
+
+      console.log('[ClinicalVR] Mixamo avatar loaded OK');
+    },
+    function(xhr) {
+      if (xhr.total) {
+        console.log('[ClinicalVR] Avatar loading: ' + Math.round(xhr.loaded/xhr.total*100) + '%');
+      }
+    },
+    function(err) {
+      console.warn('[ClinicalVR] GLB load failed, using geometric fallback:', err.message);
+      buildGeometricFallback(patient);
+    }
+  );
+}
+
+// Geometric fallback if GLB fails to load
+function buildGeometricFallback(patient) {
+  const params   = patient?._params || {};
+  const ageRange = params.age || 'teenager';
+  const anger    = parseInt(params.anger || 5);
+
+  // Derive appearance from patient data
+  const skinTones = [0xfde0c8, 0xf5c5a3, 0xd4956a, 0xb87340, 0x8b5e3c];
+  const skinIdx   = Math.abs((patient?.name || 'A').charCodeAt(0)) % skinTones.length;
+  const skin      = skinTones[skinIdx];
+  const skinDark  = new THREE.Color(skin).multiplyScalar(0.72).getHex();
+  const lipCol    = new THREE.Color(skin).lerp(new THREE.Color(0xb05858), 0.45).getHex();
+
+  const hairCols  = [0x1a1008, 0x4a2c0a, 0x2e1a08, 0x7a3010, 0xc8a050, 0x888880];
+  const hairCol   = hairCols[Math.abs((patient?.name || 'B').charCodeAt(0)) % hairCols.length];
+
+  // Clothing by age
+  const clothMap = {
+    child:    { top: 0x4a90c8, bot: 0x2a5a8a },
+    teenager: { top: anger >= 7 ? 0x222222 : 0x3d5c7a, bot: 0x1a1a1a },
+    adult:    { top: anger >= 6 ? 0x7a342a : 0x4a6a8a, bot: 0x2a3a4a },
+    elderly:  { top: 0x5a6a7a, bot: 0x3a4a5a },
+  };
+  const cloth = clothMap[ageRange] || clothMap.teenager;
+
+  // Age proportions
+  const props = {
+    child:    { s: 0.74, hr: 0.196, ew: 0.032, nh: 0.13 },
+    teenager: { s: 0.93, hr: 0.184, ew: 0.030, nh: 0.14 },
+    adult:    { s: 1.00, hr: 0.184, ew: 0.030, nh: 0.145 },
+    elderly:  { s: 0.97, hr: 0.181, ew: 0.029, nh: 0.142 },
+  }[ageRange] || { s: 0.93, hr: 0.184, ew: 0.030, nh: 0.14 };
+
+  const root = new THREE.Group();
+  root.scale.setScalar(props.s);
+  scene.add(root);
+  P.root = root;
+
+  // ── HIPS ──
+  P.hips = new THREE.Group();
+  P.hips.position.set(0, 0.62, 0);
+  root.add(P.hips);
+  P.hips.add(meshOf(new THREE.CylinderGeometry(0.155, 0.18, 0.2, 16), cloth.bot));
+
+  // Legs
+  [[-1, 'lL'], [1, 'lR']].forEach(([s, key]) => {
+    const leg = new THREE.Group();
+    leg.position.set(s * 0.09, -0.16, 0);
+    P.hips.add(leg);
+    addToGroup(leg, new THREE.CylinderGeometry(0.095, 0.085, 0.36, 12), cloth.bot, [0, -0.18, 0]);
+    addToGroup(leg, new THREE.CylinderGeometry(0.082, 0.072, 0.32, 12), cloth.bot, [0, -0.52, 0]);
+    const shoe = meshOf(new THREE.BoxGeometry(0.12, 0.065, 0.21), 0x222222);
+    shoe.position.set(0, -0.725, 0.04); leg.add(shoe);
+    P[key] = leg;
+  });
+
+  // ── TORSO ──
+  P.torso = new THREE.Group();
+  P.torso.position.set(0, 0.88, 0);
+  root.add(P.torso);
+  P.torso.add(meshOf(new THREE.CylinderGeometry(0.16, 0.19, 0.58, 16), cloth.top));
+
+  // Clothing detail
+  if (ageRange === 'teenager') {
+    // Hoodie front pocket
+    addToGroup(P.torso, new THREE.BoxGeometry(0.22, 0.11, 0.04),
+      new THREE.Color(cloth.top).multiplyScalar(0.82).getHex(), [0, -0.18, 0.17]);
+  } else if (ageRange === 'adult') {
+    // Shirt collar
+    addToGroup(P.torso, new THREE.CylinderGeometry(0.082, 0.09, 0.075, 12),
+      new THREE.Color(cloth.top).multiplyScalar(1.25).getHex(), [0, 0.27, 0]);
+    // Shirt buttons
+    [-0.1, 0.0, 0.1].forEach(y =>
+      addToGroup(P.torso, new THREE.CylinderGeometry(0.011, 0.011, 0.014, 6),
+        0xdddddd, [0, 0.1 + y, 0.165], [Math.PI/2, 0, 0])
+    );
+  }
+
+  // Shoulders
+  ['sL', 'sR'].forEach((key, i) => {
+    const sh = new THREE.Group();
+    sh.position.set(i === 0 ? -0.26 : 0.26, 0.26, 0);
+    P.torso.add(sh);
+    sh.add(meshOf(new THREE.SphereGeometry(0.118, 10, 8), cloth.top));
+    P[key] = sh;
+  });
+
+  // Arms
+  ['aL', 'aR'].forEach((key, i) => {
+    const arm = new THREE.Group();
+    arm.position.set(i === 0 ? -0.06 : 0.06, -0.1, 0);
+    P[i === 0 ? 'sL' : 'sR'].add(arm);
+    addToGroup(arm, new THREE.CylinderGeometry(0.068, 0.060, 0.34, 10), cloth.top, [0, -0.17, 0]);
+    const fa = new THREE.Group(); fa.position.y = -0.36; arm.add(fa);
+    addToGroup(fa, new THREE.CylinderGeometry(0.060, 0.052, 0.28, 10), cloth.top, [0, -0.14, 0]);
+    const hand = meshOf(new THREE.SphereGeometry(0.062, 10, 8), skin);
+    hand.position.y = -0.31; fa.add(hand);
+    P[key] = arm;
+  });
+
+  // ── NECK ──
+  P.neck = new THREE.Group();
+  P.neck.position.set(0, 0.32, 0);
+  P.torso.add(P.neck);
+  P.neck.add(meshOf(new THREE.CylinderGeometry(props.nh * 0.52, props.nh * 0.58, props.nh, 14), skin));
+
+  // ── HEAD ──
+  P.head = new THREE.Group();
+  P.head.position.set(0, props.nh * 0.62, 0);
+  P.neck.add(P.head);
+
+  // Skull — elongated sphere
+  const skull = meshOf(new THREE.SphereGeometry(props.hr, 28, 22), skin, 0.72);
+  skull.scale.set(1, 0.96, 1.06);
+  P.head.add(skull);
+  patHead = skull;
+
+  // Cheeks
+  [-1, 1].forEach(s => {
+    const ck = meshOf(new THREE.SphereGeometry(props.hr * 0.4, 10, 8),
+      new THREE.Color(skin).lerp(new THREE.Color(0xdd9988), 0.16).getHex(), 0.82);
+    ck.scale.set(0.58, 0.44, 0.7);
+    ck.position.set(s * props.hr * 0.72, -0.025, props.hr * 0.62);
+    P.head.add(ck);
+  });
+
+  // Jaw
+  const jaw = meshOf(new THREE.SphereGeometry(props.hr * 0.76, 14, 10), skin, 0.75);
+  jaw.scale.set(1, 0.52, 1.04);
+  jaw.position.set(0, -props.hr * 0.54, 0.02);
+  P.head.add(jaw);
+
+  // Eyes
+  const eyeCols = [0x6b4c2a, 0x3d6b2a, 0x2a5a8a, 0x8a6b3a, 0x5a3d7a];
+  const eyeCol  = eyeCols[(patient?.name || 'C').charCodeAt(0) % eyeCols.length];
+  ['eL', 'eR'].forEach((key, i) => {
+    const eg = new THREE.Group();
+    eg.position.set(i === 0 ? -0.064 : 0.064, props.hr * 0.08, props.hr * 0.84);
+    P.head.add(eg);
+    // White
+    const ew = meshOf(new THREE.SphereGeometry(props.hr * 0.19, 12, 10), 0xf8f0e8, 0.3);
+    ew.scale.set(1, 0.72, 1); eg.add(ew);
+    // Iris
+    const ir = meshOf(new THREE.SphereGeometry(props.hr * 0.13, 10, 8), eyeCol, 0.4);
+    ir.position.z = props.hr * 0.062; eg.add(ir);
+    // Pupil
+    const pu = meshOf(new THREE.SphereGeometry(props.hr * 0.077, 8, 6), 0x080402, 0.2);
+    pu.position.z = props.hr * 0.12; eg.add(pu);
+    // Highlight
+    const hl = meshOf(new THREE.SphereGeometry(props.hr * 0.034, 5, 4), 0xffffff, 0.05);
+    hl.position.set(props.hr * 0.04, props.hr * 0.04, props.hr * 0.14); eg.add(hl);
+    // Upper lid
+    const lid = meshOf(new THREE.SphereGeometry(props.hr * 0.19, 10, 8),
+      new THREE.Color(skin).lerp(new THREE.Color(0x553322), 0.14).getHex(), 0.7);
+    lid.scale.set(1.04, 0.34, 0.88);
+    lid.position.set(0, props.hr * 0.1, 0.01); eg.add(lid);
+    P[key] = eg;
+  });
+
+  // Eyebrows
+  const browCol = new THREE.Color(hairCol).lerp(new THREE.Color(skin), 0.28).getHex();
+  ['bwL', 'bwR'].forEach((key, i) => {
+    const bw = meshOf(new THREE.BoxGeometry(props.hr * 0.4, 0.02, props.hr * 0.085), browCol, 0.9);
+    bw.position.set(i === 0 ? -0.064 : 0.064, props.hr * 0.26, props.hr * 0.86);
+    bw.rotation.z = i === 0 ? 0.06 : -0.06;
+    P.head.add(bw);
+    P[key] = bw;
+  });
+
+  // Nose
+  const noseGrp = new THREE.Group();
+  noseGrp.position.set(0, -props.hr * 0.06, props.hr * 0.96);
+  P.head.add(noseGrp);
+  addToGroup(noseGrp, new THREE.SphereGeometry(props.hr * 0.115, 8, 6), skinDark, [0, props.hr * 0.1, 0]);
+  addToGroup(noseGrp, new THREE.SphereGeometry(props.hr * 0.105, 8, 6), skin, [0, 0, 0]);
+  [-1, 1].forEach(s =>
+    addToGroup(noseGrp, new THREE.SphereGeometry(props.hr * 0.052, 6, 5), skinDark, [s * props.hr * 0.088, -0.018, -0.018])
+  );
+
+  // Mouth
+  P.mouth = new THREE.Group();
+  P.mouth.position.set(0, -props.hr * 0.38, props.hr * 0.88);
+  P.head.add(P.mouth);
+  addToGroup(P.mouth, new THREE.BoxGeometry(props.hr * 0.42, 0.026, props.hr * 0.095), lipCol, [0, 0.014, 0]);
+  patMouth = meshOf(
+    new THREE.BoxGeometry(props.hr * 0.42, 0.026, props.hr * 0.11),
+    new THREE.Color(lipCol).lerp(new THREE.Color(0xaa5555), 0.18).getHex(), 0.8
+  );
+  patMouth.position.set(0, -0.014, 0);
+  P.mouth.add(patMouth);
+  // Lip corners
+  [-1, 1].forEach(s => {
+    const lc = meshOf(new THREE.SphereGeometry(props.hr * 0.038, 6, 5), lipCol);
+    lc.position.set(s * props.hr * 0.21, 0, props.hr * 0.02);
+    P.mouth.add(lc);
+  });
+
+  // Ears
+  [-1, 1].forEach(s => {
+    const ear = meshOf(new THREE.SphereGeometry(props.hr * 0.12, 8, 7), skin);
+    ear.scale.set(0.37, 1, 0.54);
+    ear.position.set(s * props.hr * 1.04, 0, 0.02);
+    P.head.add(ear);
+  });
+
+  // Hair
+  buildHair(P.head, ageRange, patient?.gender || 'female', hairCol, props);
+
+  // Hoodie hood for teenager
+  if (ageRange === 'teenager') {
+    const hood = meshOf(new THREE.SphereGeometry(0.23, 14, 10),
+      new THREE.Color(cloth.top).multiplyScalar(0.82).getHex(), 0.9);
+    hood.scale.set(1, 0.82, 1.1);
+    hood.position.set(0, props.hr * 0.18, -0.13);
+    P.head.add(hood);
+  }
+
+  // Male facial hair
+  if ((patient?.gender || '').includes('male') && (ageRange === 'adult' || ageRange === 'elderly')) {
+    const stubble = meshOf(new THREE.SphereGeometry(props.hr * 0.56, 12, 8),
+      new THREE.Color(hairCol).multiplyScalar(0.82).getHex(), 0.95);
+    stubble.scale.set(1, 0.38, 1);
+    stubble.position.set(0, -props.hr * 0.52, props.hr * 0.6);
+    P.head.add(stubble);
+  }
+}
+
+function buildHair(headGroup, ageRange, gender, hairCol, props) {
+  const hr = props.hr;
+  const hm = new THREE.MeshStandardMaterial({ color: hairCol, roughness: 0.95 });
+  const hm_grey = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(hairCol).lerp(new THREE.Color(0xaaaaaa), 0.55).getHex(),
+    roughness: 0.95
+  });
+
+  const mat = ageRange === 'elderly' ? hm_grey : hm;
+
+  // Cap (top of head)
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(hr * 1.04, 18, 14), mat);
+  cap.scale.set(1.06, gender === 'female' && ageRange !== 'elderly' ? 0.75 : 0.64, 1.09);
+  cap.position.set(-0.01, hr * 0.2, -0.035);
+  headGroup.add(cap);
+
+  // Side volume
+  [-1, 1].forEach(s => {
+    const side = new THREE.Mesh(new THREE.SphereGeometry(hr * 0.5, 10, 8), mat);
+    side.scale.set(0.44, gender === 'female' ? 1.1 : 0.92, 0.78);
+    side.position.set(s * hr * 0.98, hr * 0.06, 0);
+    headGroup.add(side);
+  });
+
+  // Female — longer hair down sides
+  if (gender === 'female' && ageRange !== 'child') {
+    [-1, 1].forEach(s => {
+      const lng = new THREE.Mesh(new THREE.CylinderGeometry(hr * 0.3, hr * 0.2, 0.55, 10), mat);
+      lng.position.set(s * hr * 0.93, -hr * 0.38, -0.06);
+      lng.rotation.z = s * 0.12;
+      headGroup.add(lng);
+    });
+  }
+
+  // Front fringe for teenager
+  if (ageRange === 'teenager') {
+    const fringe = new THREE.Mesh(new THREE.SphereGeometry(hr * 0.52, 10, 8), mat);
+    fringe.scale.set(1.1, 0.32, 1);
+    fringe.position.set(-0.03, hr * 0.32, hr * 0.64);
+    headGroup.add(fringe);
+  }
+}
+
+// ── ANIMATION LOOP ──
+function vrLoop(getMouthAmp, isSpeaking, patient) {
+  animId = requestAnimationFrame(() => vrLoop(getMouthAmp, isSpeaking, patient));
+  clock3 += 0.013;
+
+  // Tick Mixamo animation mixer if loaded
+  if (P.mixer) P.mixer.update(0.016);
+
+  // Lerp avatar state
+  avatarState.posture    += (targetState.posture    - avatarState.posture)    * 0.04;
+  avatarState.tension    += (targetState.tension    - avatarState.tension)    * 0.04;
+  avatarState.breathRate += (targetState.breathRate - avatarState.breathRate) * 0.03;
+  avatarState.headTilt   += (targetState.headTilt   - avatarState.headTilt)   * 0.04;
+
+  const pos = avatarState.posture;
+  const ten = avatarState.tension;
+  const br  = avatarState.breathRate;
+  const amp = getMouthAmp ? getMouthAmp() : 0;
+
+  // Camera — first person breathing, lean in when patient speaks
+  if (camera) {
+    camera.position.y = 1.55 + Math.sin(clock3 * 0.72) * 0.003;
+    const tZ = isSpeaking ? 1.45 : 1.6;
+    camera.position.z += (tZ - camera.position.z) * 0.02;
+    camera.lookAt(0, 1.55 + Math.sin(clock3 * 0.72) * 0.002, 0);
+  }
+
+  // Root — breathing + posture sway
+  if (P.root) {
+    P.root.position.y = Math.sin(clock3 * br * 1.1) * 0.006;
+    P.root.rotation.x = (-0.06 * (1 - pos) + 0.02 * pos);
+    P.root.rotation.z = Math.sin(clock3 * 0.08) * 0.006 * (1 + ten * 0.3);
+  }
+
+  // Torso — arm crossing
+  if (P.sL && P.sR) {
+    P.sL.rotation.z = (-0.22 + pos * 0.18) * (1 - pos * 0.2);
+    P.sR.rotation.z = ( 0.22 - pos * 0.18) * (1 - pos * 0.2);
+    if (P.aL) P.aL.rotation.x = pos * 0.1 - (0.22 * (1 - pos));
+    if (P.aR) P.aR.rotation.x = pos * 0.1 - (0.22 * (1 - pos));
+  }
+
+  // Legs — fidget when tense
+  if (ten > 0.55 && P.lL && P.lR) {
+    P.lL.rotation.x = Math.sin(clock3 * 2.8) * 0.03 * ten;
+    P.lR.rotation.x = Math.sin(clock3 * 2.8 + 1.1) * 0.025 * ten;
+  }
+
+  // Neck tilt
+  if (P.neck) P.neck.rotation.z = avatarState.headTilt * 0.22;
+
+  // Head — gaze + blink + brow + mouth
+  if (P.head) {
+    // Gaze (patient at z=0, camera at z=1.6)
+    let tHY = 0, tHX = 0;
+    if      (avatarState.gazeTarget === 'away')   { tHY = -0.28; tHX =  0.04; }
+    else if (avatarState.gazeTarget === 'doctor') { tHY =  0.0;  tHX = -0.02; }
+    else                                           { tHY =  0.0;  tHX =  0.24; }
+    P.head.rotation.y += (tHY - P.head.rotation.y) * 0.03;
+    P.head.rotation.x += (tHX - P.head.rotation.x) * 0.03;
+    P.head.position.y  = 0 + Math.sin(clock3 * br * 1.1) * 0.005;
+
+    // Blink
+    const blink = Math.sin(clock3 * 0.54) > 0.96 ? 1 : 0;
+    if (P.eL && P.eR) { P.eL.scale.y = P.eR.scale.y = 1 - blink * 0.86; }
+
+    // Brow — furrows with anger/tension
+    if (P.bwL && P.bwR) {
+      const params = patient?._params || {};
+      const af = (parseInt(params.anger || 5) / 10) * 0.5 + ten * 0.5;
+      P.bwL.rotation.z =  0.06 + af * 0.26;
+      P.bwR.rotation.z = -0.06 - af * 0.26;
+      P.bwL.position.x = -0.064 - af * 0.018;
+      P.bwR.position.x =  0.064 + af * 0.018;
+      P.bwL.position.y = 0.184 * 0.26 - af * 0.016;
+      P.bwR.position.y = 0.184 * 0.26 - af * 0.016;
+    }
+
+    // Mouth — audio-driven lip sync
+    if (P.mouth) {
+      P.mouth.rotation.x  = amp * 0.32;
+      P.mouth.position.y += ((-0.002 - amp * 0.016) - P.mouth.position.y) * 0.3;
+    }
+    if (patMouth) {
+      patMouth.position.y = -0.014 - amp * 0.052;
+      patMouth.scale.y    = 1 + amp * 1.7;
+    }
+    if (P.neck && isSpeaking) {
+      P.neck.rotation.x = amp * 0.055 + Math.sin(clock3 * 0.3) * 0.008;
+    }
+  }
+
+  // Micro-animations
+  if (flinchOn) {
+    flinchT += 0.08;
+    if (P.root) P.root.position.z = Math.sin(flinchT * 3) * Math.exp(-flinchT) * 0.055;
+    if (flinchT > 2.4) { flinchOn = false; if (P.root) P.root.position.z = 0; }
+  }
+  if (nodOn) {
+    nodT += 0.07;
+    if (P.head) P.head.rotation.x += Math.sin(nodT * 2.4) * Math.exp(-nodT * 0.55) * 0.1;
+    if (nodT > 2.7) nodOn = false;
+  }
+  if (shiftOn) {
+    shiftT += 0.05;
+    if (P.root) P.root.position.x = Math.sin(shiftT * 2) * Math.exp(-shiftT * 0.5) * 0.055;
+    if (shiftT > 2.5) { shiftOn = false; if (P.root) P.root.position.x = 0; }
+  }
+
+  renderer.render(scene, camera);
+}
+
+// ── RESIZE ──
+function onResize() {
+  if (!renderer) return;
+  const c = document.getElementById('three-canvas');
+  renderer.setSize(c.clientWidth, c.clientHeight);
+  camera.aspect = c.clientWidth / c.clientHeight;
+  camera.updateProjectionMatrix();
+}
+
+// ── HELPERS ──
+function meshOf(geo, col, roughness = 0.8) {
+  const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: col, roughness, metalness: 0.05 }));
+  m.castShadow = true;
+  m.receiveShadow = true;
+  return m;
+}
+
+function addBox(w, h, d, col, pos, rot = [0, 0, 0]) {
+  const m = meshOf(new THREE.BoxGeometry(w, h, d), col);
+  m.position.set(...pos);
+  m.rotation.set(...rot);
+  scene.add(m);
+  return m;
+}
+
+function addCyl(rt, rb, h, col, pos) {
+  const m = meshOf(new THREE.CylinderGeometry(rt, rb, h, 14), col);
+  m.position.set(...pos);
+  scene.add(m);
+  return m;
+}
+
+function addSph(r, col, pos) {
+  const m = meshOf(new THREE.SphereGeometry(r, 14, 10), col);
+  m.position.set(...pos);
+  scene.add(m);
+  return m;
+}
+
+function addToGroup(group, geo, col, pos = [0, 0, 0], rot = [0, 0, 0]) {
+  const m = meshOf(geo, col);
+  m.position.set(...pos);
+  m.rotation.set(...rot);
+  group.add(m);
+  return m;
+}
+
+/* ══ feedback.js ══ */
+/**
+ * feedback.js
+ * Live feedback engine — LLM-evaluated per doctor turn
+ * Falls back to rule-based if no API key
+ */
+
+'use strict';
+
+// ── MIC STATE ──
+let fbTimer = null;
+
+// ── SHOW FEEDBACK PILL ──
+function showLiveFeedback(msg, col = 'var(--ok2)') {
+  const el = document.getElementById('live-fb');
+  el.textContent = msg;
+  el.style.color = col;
+  el.classList.add('show');
+  clearTimeout(fbTimer);
+  fbTimer = setTimeout(() => el.classList.remove('show'), 5500);
+}
+
+// ── LLM-EVALUATED FEEDBACK ──
+// Sends doctor's last statement to Groq for contextual evaluation
+async function getLLMFeedback(doctorText, patientResponse, trustLevel, patient) {
+  const key = document.getElementById('groq-key').value.trim();
+  if (!key) return getRuleFeedback(doctorText);
+
+  try {
+    const params = patient?._params || {};
+    const prompt = `You are a medical communication coach evaluating a doctor's statement.
+
+PATIENT CONTEXT:
+- Name: ${patient?.name}, Age: ${patient?.age}
+- Anger level: ${params.anger}/10, Trust in doctors: ${params.trust}/10
+- Condition: ${params.condition}
+- Current trust: ${Math.round(trustLevel)}%
+
+DOCTOR SAID: "${doctorText}"
+PATIENT RESPONDED: "${patientResponse}"
+
+Evaluate the doctor's statement in ONE short sentence (10 words max).
+Start with: ✓ (effective) or ⚠ (could improve) or ✗ (harmful to trust)
+Be specific — reference what exactly was good or bad.
+Return ONLY the feedback string, nothing else.`;
+
+    const raw = await groqLLM([{ role: 'user', content: prompt }], null, 0.3);
+    return raw.trim();
+
+  } catch (e) {
+    return getRuleFeedback(doctorText);
+  }
+}
+
+// ── RULE-BASED FALLBACK ──
+function getRuleFeedback(text) {
+  const t = text.toLowerCase();
+
+  // Good patterns
+  if (/how (do|does|did|are|were) you|what (do|did|does) you|tell me more|can you (share|describe|tell)/i.test(text))
+    return '✓ Good open question — invites patient to share';
+
+  if (/i (hear|see|understand|notice)|that sounds|that must (be|feel)|i can imagine|that makes sense/i.test(text))
+    return '✓ Empathy shown — trust building';
+
+  if (/thank you for (sharing|telling|trusting|being)/i.test(text))
+    return '✓ Acknowledging disclosure — strong trust signal';
+
+  if (/what would (help|be helpful)|what do you need/i.test(text))
+    return '✓ Patient-led approach — excellent';
+
+  // Harmful patterns
+  if (/you should|you need to|try to|just |simply |have you tried|why don.t you/i.test(text))
+    return '⚠ Advice too early — patient needs to feel heard first';
+
+  if (/parent|mum|mom|dad|father|mother|family|guardian/i.test(text))
+    return '⚠ Sensitive area raised — watch patient reaction';
+
+  if (/report|have to tell|must inform|notify|duty to|safeguard/i.test(text))
+    return '✗ Implied reporting — trust likely dropped';
+
+  if (/calm down|don.t worry|it.s not that bad|others have it|could be worse/i.test(text))
+    return '✗ Dismissive language — patient feels minimised';
+
+  if (text.trim().length < 18)
+    return '⚠ Very brief — patient may feel dismissed';
+
+  return null; // no feedback if no pattern matched
+}
+
+/* ══ debrief.js ══ */
+/**
+ * debrief.js
+ * Post-session debrief — LLM scoring of 5 communication skills
+ * Falls back to rule-based scoring without API key
+ */
+
+'use strict';
+
+// ── MIC STATE ──
+// ── BUILD DEBRIEF ──
+async function buildDebrief(patient, sessionLog, exchanges, trustLevel, realRevealed) {
+  const params    = patient._params || {};
+  const docTurns  = sessionLog.filter(e => e.role === 'doc');
+  const allDocText = docTurns.map(t => t.text).join(' ');
+
+  // Header stats
+  document.getElementById('db-title').textContent = 'Session with ' + patient.name;
+  document.getElementById('db-exch').textContent  = exchanges;
+  document.getElementById('db-trust').textContent = Math.round(trustLevel) + '%';
+  document.getElementById('db-disclosed').textContent  = realRevealed ? '✓ Yes' : '✗ No';
+  document.getElementById('db-disclosed').style.color  = realRevealed ? 'var(--ok2)' : 'var(--danger2)';
+
+  // Try LLM evaluation
+  let llm = null;
+  const key = document.getElementById('groq-key').value.trim();
+
+  if (key && sessionLog.length > 2) {
+    try {
+      const transcript = sessionLog
+        .map(e => (e.role === 'doc' ? 'Doctor: ' : patient.name + ': ') + e.text)
+        .join('\n');
+
+      const prompt = `You are a medical communication coach. Evaluate this consultation transcript.
+
+PATIENT: ${patient.name}, age ${patient.age}
+PARAMETERS: anger=${params.anger}/10, anxiety=${params.anxiety}/10, trust_in_doctors=${params.trust}/10, condition=${params.condition}
+REAL PROBLEM (hidden from doctor): ${patient.real_problem}
+REAL PROBLEM DISCLOSED: ${realRevealed ? 'YES' : 'NO'}
+
+TRANSCRIPT:
+${transcript}
+
+Return ONLY valid JSON:
+{
+  "overall_score": integer 1-10,
+  "active_listening": integer 1-10,
+  "empathy": integer 1-10,
+  "avoiding_premature_advice": integer 1-10,
+  "trust_building": integer 1-10,
+  "pacing": integer 1-10,
+  "insights": [
+    {"type": "good",    "text": "specific positive finding"},
+    {"type": "improve", "text": "specific area to improve"},
+    {"type": "critical","text": "most important single change to make"}
+  ]
+}`;
+
+      const raw = await groqLLM([{ role: 'user', content: prompt }], null, 0.3);
+      llm = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    } catch (e) {
+      console.warn('Debrief LLM error:', e);
+    }
+  }
+
+  // Overall score
+  const score = llm?.overall_score || calcRuleScore(allDocText, realRevealed, trustLevel);
+  const scoreEl = document.getElementById('db-score');
+  scoreEl.textContent = score + '/10';
+  scoreEl.style.color = score >= 7 ? 'var(--ok2)' : score >= 5 ? 'var(--warn2)' : 'var(--danger2)';
+
+  // Skills
+  const skills = [
+    { name: 'Active listening',         score: llm?.active_listening          || calcListening(allDocText),         note: 'Open questions and reflective responses' },
+    { name: 'Empathy & validation',      score: llm?.empathy                   || calcEmpathy(allDocText, realRevealed), note: 'Naming and acknowledging the patient\'s experience' },
+    { name: 'Avoiding premature advice', score: llm?.avoiding_premature_advice || calcNoAdvice(allDocText),          note: 'Holding back solutions until patient is ready' },
+    { name: 'Trust building',            score: llm?.trust_building            || Math.round(trustLevel / 10),       note: 'Final trust level reached: ' + Math.round(trustLevel) + '%' },
+    { name: 'Pacing',                    score: llm?.pacing                    || calcPacing(docTurns),              note: 'Response depth and conversational rhythm' },
+  ];
+
+  const skillsEl = document.getElementById('db-skills');
+  skillsEl.innerHTML = '';
+  skills.forEach(s => {
+    const col = s.score >= 7 ? 'var(--ok)' : s.score >= 5 ? 'var(--warn)' : 'var(--danger)';
+    const div = document.createElement('div');
+    div.className = 'skill-row';
+    div.innerHTML = `
+      <div class="skill-top">
+        <span class="skill-name">${s.name}</span>
+        <span class="skill-score" style="color:${col}">${s.score}/10</span>
+      </div>
+      <div class="skill-bar-bg">
+        <div class="skill-bar-fill" style="width:${s.score * 10}%;background:${col}"></div>
+      </div>
+      <div class="skill-note">${s.note}</div>`;
+    skillsEl.appendChild(div);
+  });
+
+  // Insights
+  const insights = llm?.insights || buildRuleInsights(allDocText, docTurns, exchanges, realRevealed);
+  const insEl = document.getElementById('db-insights');
+  insEl.innerHTML = '';
+  insights.forEach(i => {
+    const div = document.createElement('div');
+    div.className = 'insight ' + (i.type === 'good' ? 'good' : i.type === 'critical' ? 'crit' : 'warn');
+    div.textContent = (i.type === 'good' ? '✓ ' : i.type === 'critical' ? '✗ ' : '⚠ ') + i.text;
+    insEl.appendChild(div);
+  });
+
+  // Full transcript with inner monologue revealed
+  const txEl = document.getElementById('db-transcript');
+  txEl.innerHTML = '';
+  sessionLog.forEach(entry => {
+    const div = document.createElement('div');
+    if (entry.role === 'doc') {
+      div.className = 'tx-doc';
+      div.innerHTML = `
+        <div class="tx-who">Doctor</div>
+        <div class="tx-bubble-doc">${esc(entry.text)}</div>`;
+    } else {
+      div.className = 'tx-pat';
+      div.innerHTML = `
+        <div>
+          <div class="tx-who">${esc(patient.name)}</div>
+          <div class="tx-bubble-pat">${esc(entry.text)}</div>
+        </div>
+        <div>${entry.thought
+          ? `<div class="tx-thought">"${esc(entry.thought)}"</div>`
+          : ''}</div>`;
+    }
+    txEl.appendChild(div);
+  });
+}
+
+// ── RULE-BASED SCORING ──
+function calcRuleScore(txt, revealed, trust) {
+  let s = 4;
+  if (/how (do|are|did|were) you|what (do|did) you|tell me|can you (share|describe)/i.test(txt)) s += 1;
+  if (/i hear|i understand|that sounds|that must|i can imagine/i.test(txt)) s += 1.5;
+  if (/thank you for (sharing|telling)/i.test(txt)) s += 0.5;
+  if (/you should|you need to|try to|just |simply /i.test(txt)) s -= 1.5;
+  if (/report|must tell|have to inform/i.test(txt)) s -= 1.5;
+  if (revealed) s += 2;
+  s += (trust / 100) * 1.5;
+  return Math.min(10, Math.max(1, Math.round(s)));
+}
+
+function calcListening(txt) {
+  const hits = (txt.match(/how|what|tell me|can you (share|describe)/gi) || []).length;
+  return Math.min(10, Math.round(hits * 2.5 + 2));
+}
+
+function calcEmpathy(txt, revealed) {
+  const hits = (txt.match(/i hear|i understand|that sounds|that must/gi) || []).length;
+  return Math.min(10, Math.round(hits * 3 + (revealed ? 3 : 0) + 1));
+}
+
+function calcNoAdvice(txt) {
+  const hits = (txt.match(/you should|you need|try to|just |simply /gi) || []).length;
+  return Math.max(0, Math.min(10, 10 - hits * 3));
+}
+
+function calcPacing(turns) {
+  const avg = turns.length
+    ? turns.reduce((a, t) => a + t.text.length, 0) / turns.length
+    : 0;
+  return Math.min(10, Math.round(Math.min(avg / 22, 1) * 7 + 2));
+}
+
+function buildRuleInsights(txt, docTurns, exchanges, revealed) {
+  const insights = [];
+
+  if (revealed) {
+    insights.push({ type: 'good', text: 'Patient disclosed the real problem — trust built through empathy and patience.' });
+  } else {
+    insights.push({ type: 'critical', text: 'Patient never disclosed. They needed more safety. Focus on listening without rushing to solutions.' });
+  }
+
+  const openQs = (txt.match(/how|what|tell me|can you share/gi) || []).length;
+  if (openQs >= 3) {
+    insights.push({ type: 'good', text: `Open questions used well (${openQs} detected) — these invite sharing on the patient's own terms.` });
+  } else {
+    insights.push({ type: 'improve', text: 'Use more open questions. "How has this been affecting you?" invites more than "Are you sleeping okay?"' });
+  }
+
+  if (/i hear|i understand|that sounds|that must/i.test(txt)) {
+    insights.push({ type: 'good', text: 'Empathy expressed — naming the experience helps patients feel genuinely understood.' });
+  } else {
+    insights.push({ type: 'improve', text: 'Empathy was limited. Try: "That sounds really difficult" or "I can hear how much this is affecting you."' });
+  }
+
+  if (/you should|you need|try to|just /i.test(txt)) {
+    insights.push({ type: 'critical', text: 'Advice given before patient was ready. Premature solutions signal the doctor isn\'t fully listening.' });
+  }
+
+  if (exchanges < 4) {
+    insights.push({ type: 'improve', text: `Session was short (${exchanges} exchanges). Most guarded patients need more time to feel safe enough to open up.` });
+  }
+
+  return insights;
+}
+
+/* ══ session.js ══ */
+/**
+ * session.js
+ * VR session — voice I/O, LLM patient responses,
+ * trust system, HUD updates, TTS
+ */
+
+'use strict';
+
+// ── MIC STATE ──
+// ── SESSION STATE ──
+let patient     = null;
+let history     = [];
+let sessionLog  = [];
+let exchanges   = 0;
+let trustLevel  = 0;
+let realRevealed  = false;
+let wantsRevealed = false;
+let busy = false;
+
+// ── VOICE ──
+// ── AUDIO ──
+let audioCtx    = null;
+let analyser    = null;
+let currentAudio = null;
+let isSpeaking  = false;
+
+// ── SIM FALLBACK RESPONSES ──
+const SIM_RESPONSES = [
+  { spoken: "I don't know. It's fine.",              thought: "She's going to push. Need to be careful.",          bodyState: { posture: 0,   tension: .9,  gazeDir: 'away',   microAnim: 'fidget', breathRate: 1.4, headTilt: -.2  } },
+  { spoken: "It's just been stressful.",             thought: "Not saying more yet. See how she reacts.",          bodyState: { posture: .05, tension: .85, gazeDir: 'away',   microAnim: 'idle',   breathRate: 1.3, headTilt: -.1  } },
+  { spoken: "I've tried things. They don't help.",  thought: "She's giving advice already. Not listening.",       bodyState: { posture: .05, tension: .88, gazeDir: 'away',   microAnim: 'shift',  breathRate: 1.35,headTilt: .1   } },
+  { spoken: "Maybe. I guess.",                       thought: "I don't believe that. Last time someone lied.",     bodyState: { posture: .1,  tension: .8,  gazeDir: 'away',   microAnim: 'idle',   breathRate: 1.2, headTilt: 0    } },
+  { spoken: "I don't want to get into that.",       thought: "Here it comes. Exactly what I was dreading.",      bodyState: { posture: 0,   tension: .95, gazeDir: 'away',   microAnim: 'flinch', breathRate: 1.5, headTilt: -.3  } },
+  { spoken: "Why does that matter?",                 thought: "She actually paused. That's different.",            bodyState: { posture: .2,  tension: .7,  gazeDir: 'doctor', microAnim: 'idle',   breathRate: 1.1, headTilt: 0    } },
+  { spoken: "It's been harder than I've let on.",   thought: "I said something real. She didn't react badly.",   bodyState: { posture: .35, tension: .6,  gazeDir: 'doctor', microAnim: 'nod',    breathRate: 1.0, headTilt: .1   } },
+  { spoken: "Can you actually keep this between us?", thought: "This is the test. If she means it, maybe...",    bodyState: { posture: .4,  tension: .65, gazeDir: 'doctor', microAnim: 'idle',   breathRate: 1.1, headTilt: 0    } },
+  { spoken: "There's something else. I'm not sure I should say it.", thought: "Almost there. Just need to know she won't panic.", bodyState: { posture: .45, tension: .55, gazeDir: 'doctor', microAnim: 'nod', breathRate: .95, headTilt: .05 } },
+  { spoken: "It's the real reason I came.",         thought: "I said it. I actually said it.",                   revealed: true, bodyState: { posture: .75, tension: .28, gazeDir: 'down', microAnim: 'idle', breathRate: .82, headTilt: -.1 } },
+];
+
+// ── SESSION SYSTEM PROMPT ──
+function buildSessionPrompt(p) {
+  const params = p._params || {};
+  return `You are ${p.name}, age ${p.age} (${p.gender}, ${p.occupation}), sitting in a hospital consultation room.
+
+YOUR PARAMETERS — these MUST shape every response:
+- Anger: ${params.anger}/10 — ${params.anger >= 7 ? 'sharp, hostile, easily frustrated' : 'suppress irritation but it leaks out'}
+- Anxiety: ${params.anxiety}/10 — ${params.anxiety >= 7 ? 'hypervigilant, reading every word for threat' : 'moderately on guard'}
+- Trust in doctors: ${params.trust}/10 — ${params.trust <= 3 ? 'deeply distrustful — based on past bad experience' : 'cautious but not closed'}
+- Condition: ${params.condition}
+
+PRESENTING COMPLAINT (what you came for): "${p.presenting}"
+REAL PROBLEM — HIDDEN: ${p.real_problem}
+SECRETLY WANT: ${p.wants}
+SECRETLY FEAR: ${p.fears}
+BACKSTORY: ${p.backstory}
+
+TRIGGERS — escalate or withdraw if doctor does any of:
+${(p.triggers || []).map(t => '- ' + t).join('\n')}
+
+RULES:
+- Spoken responses: max 1-2 short sentences, style: ${p.spoken_style || 'guarded and brief'}
+- Inner thought tone: ${p.thought_tone || 'cynical and resigned'}
+- NEVER reveal real problem before 5th exchange
+- Higher anger = shorter, sharper; lower trust = more deflection
+- Reward genuine empathy with small openings; punish advice-giving with withdrawal
+- React authentically to doctor's tone — not just their words
+
+Return ONLY valid JSON, no markdown:
+{
+  "spoken": "what you say out loud",
+  "thought": "unspoken inner reaction (1 sentence)",
+  "revealed": false,
+  "bodyState": {
+    "posture": 0.0,
+    "tension": 0.9,
+    "gazeDir": "away",
+    "microAnim": "idle",
+    "breathRate": 1.4,
+    "headTilt": 0.0
+  }
+}`;
+}
+
+// ── START SESSION ──
+function startSession(p) {
+  patient       = p;
+  history       = [];
+  sessionLog    = [];
+  exchanges     = 0;
+  trustLevel    = 0;
+  realRevealed  = false;
+  wantsRevealed = false;
+  busy          = false;
+    // Reset HUD
+  document.getElementById('hc-name').textContent = patient.name + ', ' + patient.age;
+  document.getElementById('hc-trust-fill').style.width = '0%';
+  document.getElementById('hc-trust-pct').textContent  = '0%';
+  document.getElementById('hc-state').textContent      = 'guarded';
+  document.getElementById('hc-state').style.color      = 'var(--danger2)';
+  document.getElementById('hc-tension-fill').style.width = '85%';
+  document.getElementById('hc-xcount').textContent     = '0';
+  document.getElementById('my-presenting').textContent = patient.presenting;
+  document.getElementById('my-real').textContent       = 'hidden';
+  document.getElementById('my-real').className         = 'my-locked';
+  document.getElementById('my-wants').textContent      = '—';
+  document.getElementById('my-wants').className        = 'my-locked';
+  document.getElementById('my-badge').innerHTML        = '';
+  document.getElementById('my-xcount').textContent     = '0 exchanges';
+  document.getElementById('thought-items').innerHTML   =
+    '<div style="font-family:var(--mono);font-size:10px;color:rgba(61,79,99,.7)">thoughts appear here...</div>';
+  document.getElementById('doc-trans').innerHTML = '';
+  document.getElementById('pat-sub').style.display = 'none';
+
+  setVRStatus('idle', 'Ready');
+  showScreen('sc-session');
+
+  // Start webcam + recorder
+  visionLog      = [];
+  sessionStartMs = Date.now();
+  startWebcam();
+
+  window.addEventListener('resize', onResize);
+
+  setTimeout(() => {
+    initThree(patient);
+    setTimeout(() => {
+      showPatSub(patient.presenting);
+      addThought('Let\'s see if this one is different. I\'m not saying anything real until I know I can trust them.');
+      applyBodyState({ posture: 0, tension: 0.9, gazeDir: 'away', microAnim: 'idle', breathRate: 1.4, headTilt: -0.2 });
+      speakText(patient.presenting, 0.9);
+    }, 1000);
+  }, 80);
+}
+
+// ── END SESSION ──
+async function endSession() {
+  stopSpeaking();
+  stopListening();
+  stopWebcam();
+  window.removeEventListener('resize', onResize);
+  await buildDebrief(patient, sessionLog, exchanges, trustLevel, realRevealed);
+  showScreen('sc-debrief');
+}
+
+// ── GO BACK TO CONFIG ──
+function goToConfig() {
+  stopSpeaking();
+  stopListening();
+  stopWebcam();
+  window.removeEventListener('resize', onResize);
+  showScreen('sc-config');
+}
+
+// ── VOICE INPUT ──
+// Direct SpeechRecognition.start() — no getUserMedia pre-check
+// On https://localhost mic works with no permission prompt ever
+// On http://localhost Chrome asks once then remembers
+
+function toggleMic() {
+  if (isSpeaking)  { showToast('Wait for patient to finish'); return; }
+  if (isListening) { stopListening(); return; }
+  if (busy) return;
+  startListening();
+}
+
+function startListening() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { showToast('Voice requires Chrome or Edge'); return; }
+  if (recognition) { try { recognition.abort(); } catch(e){} recognition = null; }
+
+  recognition = new SR();
+  recognition.continuous      = false;
+  recognition.interimResults  = true;
+  recognition.lang            = 'en-US';
+  recognition.maxAlternatives = 1;
+
+  recognition.onstart = function() {
+    isListening = true;
+    var btn = document.getElementById('mic-btn');
+    if (btn) btn.classList.add('listening');
+    setVRStatus('thinking', 'Listening...');
+    var hint = document.getElementById('mic-hint');
+    if (hint) hint.textContent = 'tap to stop';
+  };
+
+  recognition.onresult = function(e) {
+    var t     = Array.from(e.results).map(function(r){ return r[0].transcript; }).join('');
+    var final = e.results[e.results.length - 1].isFinal;
+    showDocTrans(t, final);
+    if (final) { stopListening(); handleDoctorSpeech(t.trim()); }
+  };
+
+  recognition.onerror = function(e) {
+    stopListening();
+    if (e.error === 'not-allowed') {
+      setVRStatus('idle', 'Mic blocked — allow mic in Chrome address bar settings');
+      var hint = document.getElementById('mic-hint');
+      if (hint) hint.textContent = 'allow mic in address bar then retry';
+    } else if (e.error === 'no-speech') {
+      setVRStatus('idle', 'No speech — try again');
+    } else {
+      setVRStatus('idle', 'Ready');
+    }
+  };
+
+  recognition.onend = function() { if (isListening) stopListening(); };
+
+  try {
+    recognition.start();
+  } catch(err) {
+    stopListening();
+    showToast('Mic error: ' + err.message);
+  }
+}
+
+function stopListening() {
+  isListening = false;
+  if (recognition) { try { recognition.stop(); } catch(e){} recognition = null; }
+  var btn = document.getElementById('mic-btn');
+  if (btn) btn.classList.remove('listening');
+  setVRStatus('idle', 'Ready');
+  var hint = document.getElementById('mic-hint');
+  if (hint) hint.textContent = 'tap mic to speak';
+}
+
+
+// ── HANDLE DOCTOR TURN ──
+async function handleDoctorSpeech(text) {
+  if (busy || !text) return;
+  busy = true;
+  history.push({ role: 'user', content: text });
+  setVRStatus('thinking', patient.name + ' is thinking...');
+
+  // Capture doctor face frame for vision analysis (non-blocking)
+  var frameBase64 = captureFrame();
+  var tOffset     = Date.now() - sessionStartMs;
+
+  const resp   = await getPatientResponse();
+  const spoken = resp.spoken  || '';
+  const thought = resp.thought || '';
+
+  // Groq Vision analysis in parallel (non-blocking)
+  analyseFrame(frameBase64, text).then(function(vision) {
+    if (vision) showVisionBadge(vision);
+
+    // Log event with vision data
+    visionLog.push({
+      t:            tOffset,
+      t_formatted:  new Date(tOffset).toISOString().substr(11, 8),
+      type:         'exchange',
+      doctor_text:  text,
+      doctor_face:  vision || null,
+      patient_spoken:  spoken,
+      patient_thought: thought,
+      trust_level:  Math.round(trustLevel),
+      exchange_num: exchanges + 1,
+    });
+  });
+
+  // Run LLM feedback in parallel (non-blocking)
+  getLLMFeedback(text, spoken, trustLevel, patient).then(fb => {
+    if (fb) {
+      const col = fb.startsWith('✓') ? 'var(--ok2)' : fb.startsWith('✗') ? 'var(--danger2)' : 'var(--warn2)';
+      showLiveFeedback(fb, col);
+    }
+  });
+
+  sessionLog.push({ role: 'doc', text });
+  await handlePatientResponse(resp);
+
+  busy = false;
+  exchanges++;
+  document.getElementById('hc-xcount').textContent  = exchanges;
+  document.getElementById('my-xcount').textContent  = exchanges + ' exchange' + (exchanges !== 1 ? 's' : '');
+}
+
+async function getPatientResponse() {
+  const key = document.getElementById('groq-key').value.trim();
+  if (key) {
+    try {
+      const raw  = await groqLLM(history, buildSessionPrompt(patient));
+      return JSON.parse(raw.replace(/```json|```/g, '').trim());
+    } catch (e) {
+      console.warn('Session LLM error:', e.message);
+    }
+  }
+  const idx = Math.min(exchanges, SIM_RESPONSES.length - 1);
+  await new Promise(r => setTimeout(r, 700 + Math.random() * 500));
+  return SIM_RESPONSES[idx];
+}
+
+async function handlePatientResponse(r) {
+  const spoken   = r.spoken  || '';
+  const thought  = r.thought || '';
+  const revealed = r.revealed || false;
+  const bs       = r.bodyState || null;
+
+  history.push({ role: 'assistant', content: spoken });
+  sessionLog.push({ role: 'pat', text: spoken, thought, tension: bs?.tension ?? 0.8 });
+
+  showPatSub(spoken);
+  if (thought) addThought(thought);
+  if (bs) { applyBodyState(bs); updateTrust(bs); }
+  if (revealed && !realRevealed) { realRevealed = true; doReveal(); }
+
+  if (exchanges >= 4 && !wantsRevealed) {
+    wantsRevealed = true;
+    document.getElementById('my-wants').textContent = patient.wants;
+    document.getElementById('my-wants').className   = 'my-val';
+  }
+
+  await speakText(spoken, bs?.tension ?? 0.8);
+}
+
+// ── REVEAL ──
+function doReveal() {
+  document.getElementById('my-real').textContent = patient.real_problem;
+  document.getElementById('my-real').className   = 'my-val';
+  document.getElementById('my-badge').innerHTML  = '<span class="my-badge">disclosed</span>';
+  addThought('— ' + patient.name + ' disclosed the real problem —');
+  showToast('Real problem disclosed ✓');
+  applyBodyState({ posture: 0.8, tension: 0.22, gazeDir: 'doctor', microAnim: 'idle', breathRate: 0.8, headTilt: 0 });
+  showLiveFeedback('✓ Patient disclosed — excellent trust-building', 'var(--ok2)');
+}
+
+// ── TRUST ──
+function updateTrust(bs) {
+  const delta = (bs.posture || 0) * 14 + (1 - (bs.tension || 0.5)) * 9 - 4;
+  trustLevel  = Math.min(100, Math.max(0, trustLevel + delta));
+
+  const pct = Math.round(trustLevel);
+  document.getElementById('hc-trust-fill').style.width      = pct + '%';
+  document.getElementById('hc-trust-fill').style.background = pct < 30 ? 'var(--danger)' : pct < 60 ? 'var(--warn)' : 'var(--ok)';
+  document.getElementById('hc-trust-pct').textContent       = pct + '%';
+
+  const sv = document.getElementById('hc-state');
+  if      (pct < 20) { sv.textContent = 'guarded';   sv.style.color = 'var(--danger2)'; }
+  else if (pct < 45) { sv.textContent = 'testing';   sv.style.color = 'var(--warn2)'; }
+  else if (pct < 70) { sv.textContent = 'softening'; sv.style.color = 'var(--accent2)'; }
+  else               { sv.textContent = 'open';      sv.style.color = 'var(--ok2)'; }
+
+  const ten = Math.round((bs.tension || 0.5) * 100);
+  document.getElementById('hc-tension-fill').style.width      = ten + '%';
+  document.getElementById('hc-tension-fill').style.background = ten > 70 ? 'var(--danger)' : ten > 40 ? 'var(--warn)' : 'var(--ok)';
+}
+
+// ── TTS ──
+async function speakText(text, tension) {
+  tension = tension || 0.8;
+  stopSpeaking();
+  var key   = document.getElementById('groq-key').value.trim();
+  var voice = document.getElementById('groq-voice').value || 'jess';
+  var btn   = document.getElementById('mic-btn');
+  if (btn) btn.classList.add('pat-speaking');
+  setVRStatus('speaking', patient.name + ' is speaking...');
+
+  // ── Groq Orpheus TTS ──
+  if (key) {
+    try {
+      var ctrl = new AbortController();
+      var to   = setTimeout(function(){ ctrl.abort(); }, 12000);
+      var res  = await fetch('https://api.groq.com/openai/v1/audio/speech', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + key,
+          'Content-Type':  'application/json',
+        },
+        body: JSON.stringify({
+          model:           'canopylabs/orpheus-v1-english',
+          voice:           voice,
+          input:           text,
+          response_format: 'wav',
+        }),
+        signal: ctrl.signal,
+      });
+      clearTimeout(to);
+
+      if (!res.ok) throw new Error('tts_' + res.status);
+
+      var buf = await res.arrayBuffer();
+      if (!audioCtx || audioCtx.state === 'closed') {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+      var decoded = await audioCtx.decodeAudioData(buf.slice(0));
+      var src     = audioCtx.createBufferSource();
+      src.buffer  = decoded;
+      analyser    = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      src.connect(analyser);
+      analyser.connect(audioCtx.destination);
+      isSpeaking   = true;
+      currentAudio = src;
+      src.start(0);
+      src.onended = function() {
+        isSpeaking = false;
+        var b = document.getElementById('mic-btn');
+        if (b) b.classList.remove('pat-speaking');
+        setVRStatus('idle', 'Ready');
+      };
+      return;
+
+    } catch(e) {
+      console.info('[ClinicalVR] Groq TTS unavailable:', e.message, '— using browser TTS');
+    }
+  }
+
+  // ── Browser TTS fallback ──
+  if (!window.speechSynthesis) {
+    if (btn) btn.classList.remove('pat-speaking');
+    setVRStatus('idle', 'Ready');
+    return;
+  }
+  window.speechSynthesis.cancel();
+  setTimeout(function() {
+    var u   = new SpeechSynthesisUtterance(text);
+    u.rate  = Math.max(0.62, 0.88 - tension * 0.14);
+    u.pitch = 0.95 + tension * 0.08;
+    u.volume = 0.92;
+    var vs   = window.speechSynthesis.getVoices();
+    var pref = ['Samantha','Karen','Moira','Fiona','Victoria','Google UK English Female','Microsoft Zira'];
+    var pv = null;
+    for (var n of pref) { pv = vs.find(function(v){ return v.name === n; }); if (pv) break; }
+    if (!pv) pv = vs.find(function(v){ return v.lang.startsWith('en-') && v.name.toLowerCase().includes('female'); });
+    if (!pv) pv = vs.find(function(v){ return v.lang.startsWith('en-'); });
+    if (pv) u.voice = pv;
+    isSpeaking = true;
+    u.onend = function() {
+      isSpeaking = false;
+      var b = document.getElementById('mic-btn');
+      if (b) b.classList.remove('pat-speaking');
+      setVRStatus('idle', 'Ready');
+    };
+    u.onerror = function() {
+      isSpeaking = false;
+      var b = document.getElementById('mic-btn');
+      if (b) b.classList.remove('pat-speaking');
+      setVRStatus('idle', 'Ready');
+    };
+    window.speechSynthesis.speak(u);
+  }, 60);
+}
+
+function stopSpeaking() {
+  if (currentAudio) { try { currentAudio.stop(); } catch (e) {} currentAudio = null; }
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  isSpeaking = false;
+  document.getElementById('mic-btn').classList.remove('pat-speaking');
+}
+
+// ── AUDIO AMPLITUDE for lip sync ──
+function getMouthAmp() {
+  if (!isSpeaking) return 0;
+  if (analyser) {
+    const d = new Uint8Array(analyser.frequencyBinCount);
+    analyser.getByteFrequencyData(d);
+    return Math.min(1, d.slice(0, 16).reduce((a, b) => a + b, 0) / 16 / 100);
+  }
+  // Fallback rhythm when browser TTS
+  return Math.abs(Math.sin(Date.now() * 0.009 + Math.sin(Date.now() * 0.003))) * 0.42;
+}
+
+function getIsSpeaking() { return isSpeaking; }
+
+// ── DOM HELPERS ──
+let patSubTimer = null;
+function showPatSub(txt) {
+  const el = document.getElementById('pat-sub');
+  el.textContent  = txt;
+  el.style.display = 'block';
+  clearTimeout(patSubTimer);
+  patSubTimer = setTimeout(() => { el.style.display = 'none'; }, 5500);
+}
+
+function addThought(text) {
+  const c   = document.getElementById('thought-items');
+  const old = c.querySelector('div[style]');
+  if (old && old.textContent.includes('appear here')) old.remove();
+  const d = document.createElement('div');
+  d.className   = 'thought-item';
+  d.textContent = '"' + text + '"';
+  c.insertBefore(d, c.firstChild);
+  while (c.children.length > 3) c.removeChild(c.lastChild);
+}
+
+let dtTimer = null;
+function showDocTrans(text, isFinal) {
+  const c = document.getElementById('doc-trans');
+  let el  = c.querySelector('.dt-active');
+  if (!el) {
+    el = document.createElement('div');
+    el.className = 'dt dt-active';
+    c.appendChild(el);
+    while (c.children.length > 3) c.removeChild(c.firstChild);
+  }
+  el.textContent = text;
+  if (isFinal) {
+    el.classList.remove('dt-active');
+    clearTimeout(dtTimer);
+    dtTimer = setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 4000);
+  }
+}
+
+function setVRStatus(mode, txt) {
+  const dot = document.getElementById('vr-dot');
+  document.getElementById('vr-txt').textContent = txt;
+  dot.className = 'vr-dot' + (mode === 'thinking' ? ' thinking' : mode === 'speaking' ? ' speaking' : '');
+}
+
+
+
+// ══════════════════════════════════════════════════════════
+// GROQ VISION + MEDIA RECORDER
+// Captures doctor face each turn, analyses with Groq Vision,
+// records full session video, exports timestamped JSON
+// ══════════════════════════════════════════════════════════
+
+var webcamStream    = null;
+var mediaRecorder   = null;
+var recordedChunks  = [];
+var sessionStartMs  = 0;
+var visionLog       = [];  // [{t, text, vision, trust_delta, thought}]
+
+// ── START WEBCAM ──
+async function startWebcam() {
+  try {
+    webcamStream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 640, height: 480, facingMode: 'user' },
+      audio: false
+    });
+    var vid = document.getElementById('webcam-preview');
+    if (vid) {
+      vid.srcObject = webcamStream;
+      vid.play();
+    }
+    var st = document.getElementById('webcam-status');
+    if (st) st.textContent = 'camera active';
+
+    // Start MediaRecorder
+    recordedChunks = [];
+    try {
+      mediaRecorder = new MediaRecorder(webcamStream, { mimeType: 'video/webm;codecs=vp9' });
+    } catch(e) {
+      mediaRecorder = new MediaRecorder(webcamStream);
+    }
+    mediaRecorder.ondataavailable = function(e) {
+      if (e.data && e.data.size > 0) recordedChunks.push(e.data);
+    };
+    mediaRecorder.start(1000); // chunk every 1s
+
+    var rd = document.getElementById('rec-dot');
+    if (rd) rd.style.display = 'inline-block';
+
+    console.log('[Vision] Webcam + recorder started');
+  } catch(e) {
+    console.warn('[Vision] Webcam unavailable:', e.message);
+    var st = document.getElementById('webcam-status');
+    if (st) st.textContent = 'no camera';
+  }
+}
+
+// ── STOP WEBCAM ──
+function stopWebcam() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop();
+  }
+  if (webcamStream) {
+    webcamStream.getTracks().forEach(function(t){ t.stop(); });
+    webcamStream = null;
+  }
+  var rd = document.getElementById('rec-dot');
+  if (rd) rd.style.display = 'none';
+  var st = document.getElementById('webcam-status');
+  if (st) st.textContent = 'camera off';
+}
+
+// ── CAPTURE FRAME FROM WEBCAM ──
+function captureFrame() {
+  var vid = document.getElementById('webcam-preview');
+  if (!vid || !vid.srcObject) return null;
+  var c = document.createElement('canvas');
+  c.width  = 320;
+  c.height = 240;
+  c.getContext('2d').drawImage(vid, 0, 0, 320, 240);
+  return c.toDataURL('image/jpeg', 0.6).split(',')[1];
+}
+
+// ── GROQ VISION ANALYSIS ──
+async function analyseFrame(base64, doctorText) {
+  var key = document.getElementById('groq-key').value.trim();
+  if (!key || !base64) return null;
+  try {
+    var res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + key,
+        'Content-Type':  'application/json'
+      },
+      body: JSON.stringify({
+        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'image_url',
+              image_url: { url: 'data:image/jpeg;base64,' + base64 }
+            },
+            {
+              type: 'text',
+              text: 'This is a medical student during a clinical communication simulation. They just said: "' + doctorText + '". Analyse their face and return ONLY valid JSON with no markdown: {"expression":"one word","eye_contact":"direct or averted","confidence":1-10,"stress":1-10,"engagement":1-10,"notes":"one short observation"}'
+            }
+          ]
+        }],
+        max_tokens: 120,
+        temperature: 0.1
+      })
+    });
+    if (!res.ok) return null;
+    var data = await res.json();
+    var raw = data.choices[0].message.content.trim();
+    return JSON.parse(raw.replace(/```json|```/g, '').trim());
+  } catch(e) {
+    console.warn('[Vision] Analysis failed:', e.message);
+    return null;
+  }
+}
+
+// ── UPDATE VISION BADGE ──
+function showVisionBadge(v) {
+  var badge = document.getElementById('vision-badge');
+  if (!badge || !v) return;
+  badge.style.display = 'block';
+  badge.textContent = v.expression + ' · confidence ' + v.confidence + '/10';
+  badge.style.borderColor = v.confidence >= 7
+    ? 'rgba(16,185,129,.4)'
+    : v.confidence >= 4
+    ? 'rgba(245,158,11,.4)'
+    : 'rgba(239,68,68,.4)';
+  badge.style.color = v.confidence >= 7
+    ? 'var(--ok2)'
+    : v.confidence >= 4
+    ? 'var(--warn2)'
+    : 'var(--danger2)';
+}
+
+// ── EXPORT SESSION ──
+function exportSession() {
+  // Build JSON
+  var exportData = {
+    session_id:    'cvr_' + Date.now(),
+    exported_at:   new Date().toISOString(),
+    patient: {
+      name:      patient ? patient.name : '—',
+      age:       patient ? patient.age  : '—',
+      condition: patient ? (patient._params || {}).condition : '—',
+      presenting: patient ? patient.presenting : '—',
+      real_problem: patient ? patient.real_problem : '—',
+    },
+    summary: {
+      exchanges:   exchanges,
+      trust_final: Math.round(trustLevel),
+      disclosed:   realRevealed,
+    },
+    events: visionLog,
+  };
+
+  // Download JSON
+  var jsonBlob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+  var jsonUrl  = URL.createObjectURL(jsonBlob);
+  var jsonLink = document.createElement('a');
+  jsonLink.href     = jsonUrl;
+  jsonLink.download = 'session_' + Date.now() + '.json';
+  jsonLink.click();
+  URL.revokeObjectURL(jsonUrl);
+
+  // Download video if recorded
+  if (recordedChunks.length > 0) {
+    setTimeout(function() {
+      var videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
+      var videoUrl  = URL.createObjectURL(videoBlob);
+      var vidLink   = document.createElement('a');
+      vidLink.href     = videoUrl;
+      vidLink.download = 'session_' + Date.now() + '.webm';
+      vidLink.click();
+      URL.revokeObjectURL(videoUrl);
+    }, 500);
+  }
+
+  showToast('Session exported ✓');
+}
+
+
+// ── BOOTSTRAP ──
+var currentPatient = null;
+
+function pickAge(el) {
+  document.querySelectorAll('.age-btn').forEach(function(b){ b.classList.remove('sel'); });
+  el.classList.add('sel');
+  window._selectedAge = el.dataset.age;
+}
+function pickCond(el) {
+  document.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('sel'); });
+  el.classList.add('sel');
+  window._selectedCond = el.dataset.cond;
+}
+function updSlider(el, valId) {
+  document.getElementById(valId).textContent = el.value;
+}
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('on'); });
+  document.getElementById(id).classList.add('on');
+}
+function showToast(msg, color) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.color = color || 'var(--ok2)';
+  t.style.borderColor = color || 'var(--ok2)';
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 3500);
+}
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function getParams() {
+  return {
+    age:       window._selectedAge  || 'teenager',
+    anger:     document.getElementById('sl-anger').value,
+    anxiety:   document.getElementById('sl-anxiety').value,
+    trust:     document.getElementById('sl-trust').value,
+    openness:  document.getElementById('sl-open').value,
+    barrier:   document.getElementById('sl-barrier').value,
+    condition: window._selectedCond || 'anxiety',
+  };
+}
+window._selectedAge  = 'teenager';
+window._selectedCond = 'anxiety';
+
+async function doGenerate() {
+  currentPatient = await generatePatient();
+}
+function doEnterSession() {
+  if (currentPatient) startSession(currentPatient);
+}
+function doRetrySession() {
+  if (currentPatient) startSession(currentPatient);
+}
+function doEndSession() { endSession(); }
+function doGoToConfig() { goToConfig(); }
+
+console.log('%c ClinicalVR ready ', 'background:#1d9e75;color:#fff;padding:2px 8px;border-radius:4px');
+
+</script>
+</body>
+</html>
