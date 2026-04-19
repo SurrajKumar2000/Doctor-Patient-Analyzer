@@ -21,13 +21,13 @@ Every session is scored on clinical communication quality.
 ![Patient Profile](<Screenshot 2026-04-18 at 7.06.21 PM.png>)
 
 ### Consultation Room — Session Active
-![Patient Profile](<Screenshot 2026-04-18 at 7.06.21 PM.png>)
+![Consultation Room](<Screenshot 2026-04-18 at 7.06.30 PM.png>)
 
-### Consultation Room — Full View
-![Full Room View](Screenshot_2026-04-18_at_7_07_09_PM.png)
+### Full Room View
+![Full Room View](<Screenshot 2026-04-18 at 7.07.09 PM.png>)
 
-### Post-Session Debrief — Communication Score
-![Debrief Screen](Screenshot_2026-04-18_at_7_07_28_PM.png)
+### Post-Session Debrief
+![Post Session Debrief](<Screenshot 2026-04-18 at 7.07.28 PM.png>)
 
 ---
 
