@@ -18,10 +18,10 @@ Every session is scored on clinical communication quality.
 ## Screenshots
 
 ### Patient Profile — Clinical Brief
-![Patient Profile](/Users/sk/Downloads/doc-pat/Doctor-Patient-Analyzer/clinical-vr/Screenshot 2026-04-18 at 7.06.21 PM.png)
+![Patient Profile](<Screenshot 2026-04-18 at 7.06.21 PM.png>)
 
 ### Consultation Room — Session Active
-![Consultation Room](<Screenshot 2026-04-18 at 7.06.30 PM.png>)
+![Patient Profile](<Screenshot 2026-04-18 at 7.06.21 PM.png>)
 
 ### Consultation Room — Full View
 ![Full Room View](Screenshot_2026-04-18_at_7_07_09_PM.png)
